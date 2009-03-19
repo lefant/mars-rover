@@ -23,11 +23,12 @@
           maxturn = 20,
           maxhardturn = 60,
 
-          vehiclectl = "a-",
-          vehiclex = -25.0,
-          vehicley = 25,
-          vehicledir = 50,
-          vehiclespeed = 0
+          turn = "-",
+          accel = "-",
+          x = -25.0,
+          y = 25,
+          dir = 50,
+          speed = 0
          }).
 
 test() ->
@@ -58,15 +59,15 @@ receive_loop(Socket,World) ->
     end.
 
 get_command(World) ->
-    Dir = desired_dir(World),
-    Ctl = string:substr(World#world.vehiclectl, 2),
-    correct_steer(Ctl,steering_goalstate(Dir)).
+    DiffTurn = desired_dir(World),
+    TurnState = World#world.turn,
+    correct_turn(TurnState,turn_goal(DiffTurn)).
 %%%     steer(Dir,Ctl).
 
 desired_dir(World) ->
-    X = World#world.vehiclex,
-    Y = World#world.vehicley,
-    Dir = World#world.vehicledir,
+    X = World#world.x,
+    Y = World#world.y,
+    Dir = World#world.dir,
     %%DesDir = (math:atan(Y/X)/math:pi())*180,
     DesDir = math:atan(Y/X),
     if
@@ -74,6 +75,7 @@ desired_dir(World) ->
         true -> DesDir1 = DesDir
     end,
 
+    avoid_obstacle(World,DesDir1),
     Diff = DesDir1 - Dir,
     %%?LOG({"desire: ",X,Y,Dir,DesDir,Diff}),
     %%check_rectangle(World,(DesDir1/180)*math:pi()),
@@ -81,13 +83,44 @@ desired_dir(World) ->
     Diff.
 
 
-%% avoid_obstacle(World,Dir) ->
-%%     coords_to_pov(World#world.vehiclex,World#world.vehicley,World#world.vehicledir,X,Y),
-%%     Dir1.
+avoid_obstacle(World,Dir) ->
+    %% build a list of all dangers, excluding ones
+    %% we cannot hit without going at least 100
+    Dangers =
+        lists:filter(
+          fun({X,Y,R})->
+                  lists:min([abs(X-World#world.x),abs(Y-World#world.y)]) - R > 100
+          end,
+          World#world.craters ++ World#world.boulders),
+    %% convert all coordinates to ones relative to our vehicle facing
+    %% forward on the Y-axis
+    Obstacles = 
+        lists:map(
+          fun({X,Y,R})->
+                  {X1,Y1} = coords_to_pov(
+                            World#world.x,World#world.y,World#world.dir,
+                            {X,Y}),
+                  {X1,Y1,R}
+          end,
+          Dangers),
+    ?LOG({"avoid_obstacles: ",length(Dangers),length(Obstacles)}),
+    Dir1 = Dir,
+    Dir1.
+
+
+
+coords_to_pov(Ox,Oy,Dir,{X,Y}) ->
+    X1 = X-Ox,
+    Y1 = Y-Oy,
+    X2 = X1*math:sin(Dir) - Y1*math:cos(Dir),
+    Y2 = X1*math:cos(Dir) + Y1*math:sin(Dir),
+    ?LOG({"coords_to_pov: ",{Ox,Oy},Dir,{X,Y},{X1,Y1},{X2,Y2}}),
+    {X2,Y2}.
+
 
 %% check_rectangle(World,Dir) ->
-%%     X = World#world.vehiclex,
-%%     Y = World#world.vehicley,
+%%     X = World#world.x,
+%%     Y = World#world.y,
 %%     R = 0.5,
 %%     L = 10,
 %%     Vx = math:sin(Dir),
@@ -103,18 +136,18 @@ desired_dir(World) ->
 %%     ok.
 
 
-steering_goalstate(Dir) ->
+turn_goal(Diff) ->
     HardTresh = 0.3,
     StraightTresh = 0.1,
     if
-        Dir < (-1*HardTresh) -> "R";
-        ((-1*HardTresh) =< Dir) and (Dir < StraightTresh)-> "r";
-        ((-1*StraightTresh) =< Dir) and (Dir =< StraightTresh) -> "-";
-        (StraightTresh < Dir) and (Dir < HardTresh)-> "l";
-        HardTresh < Dir -> "L"
+        Diff < (-1*HardTresh) -> "R";
+        ((-1*HardTresh) =< Diff) and (Diff < StraightTresh)-> "r";
+        ((-1*StraightTresh) =< Diff) and (Diff =< StraightTresh) -> "-";
+        (StraightTresh < Diff) and (Diff < HardTresh)-> "l";
+        HardTresh < Diff -> "L"
     end.
 
-correct_steer(Cur,Goal) ->
+correct_turn(Cur,Goal) ->
     case Cur of
         Goal -> C = "a;";
         "R" -> C = "al;";
@@ -145,25 +178,17 @@ correct_steer(Cur,Goal) ->
 
 
 
-coords_to_pov(Ox,Oy,Dir,X,Y) ->
-    X1 = X-Ox,
-    Y1 = Y-Oy,
-    X2 = X1*math:sin(Dir) - Y1*math:cos(Dir),
-    Y2 = X1*math:cos(Dir) + Y1*math:sin(Dir),
-    ?LOG({"coords_to_pov: ",{Ox,Oy},Dir,{X,Y},{X1,Y1},{X2,Y2}}),
-    [X2,Y2].
-
-
 parse_message(World,["T"|List]) ->
     %% T time-stamp vehicle-ctl vehicle-x vehicle-y vehicle-dir vehicle-speed objects ;
     [_,VehicleCtl,VehicleX,VehicleY,VehicleDir,VehicleSpeed|ObjectList] = List,
     World1 = World#world{
-      vehiclectl=VehicleCtl,
-      vehiclex=str2num(VehicleX),
-      vehicley=str2num(VehicleY),
-      vehicledir=(str2num(VehicleDir)/180)*math:pi(),
-      vehiclespeed=str2num(VehicleSpeed)
-     },
+               turn=string:substr(VehicleCtl, 2),
+               accel=string:left(VehicleCtl, 1),
+               x=str2num(VehicleX),
+               y=str2num(VehicleY),
+               dir=(str2num(VehicleDir)/180)*math:pi(),
+               speed=str2num(VehicleSpeed)
+              },
     parse_object_list(World1,ObjectList);
 
 parse_message(World,["I"|List]) ->
