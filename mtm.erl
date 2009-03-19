@@ -91,9 +91,16 @@ receive_loop(Socket,World) ->
     end.
 
 get_command(World) ->
-    {Accel,DiffTurn} = desired_dir(World),
-    TurnState = World#world.turn,
-    Turn = correct_turn(TurnState,turn_goal(DiffTurn)),
+    {SpeedStyle,DiffTurn} = desired_dir(World),
+    Turn = correct_turn(
+             World#world.turn,
+             turn_goal(DiffTurn)),
+    Accel = correct_accel(
+              World#world.accel,
+              accel_goal(
+                World#world.speed,
+                World#world.maxspeed,
+                SpeedStyle)),
     list_to_binary(string:join([Accel,Turn,";"],"")).
 
 
@@ -108,9 +115,9 @@ desired_dir(World) ->
         true -> DesDir1 = DesDir
     end,
 
-    {Accel,DesDir2} = avoid_obstacle(World,DesDir1),
+    {Speed,DesDir2} = avoid_obstacle(World,DesDir1),
     Diff = DesDir2 - Dir,
-    {Accel,Diff}.
+    {Speed,Diff}.
 
 
 avoid_obstacle(World,Dir) ->
@@ -156,24 +163,40 @@ avoid_obstacle(World,Dir) ->
 
     SortedObstacles = lists:keysort(2,Obstacles1),
 %%%     ?LOG({"avoid_obstacles sorted obstacles: ",SortedObstacles}),
+
     case SortedObstacles of
-        [] -> {"a",Dir};
-        [Threat|Rest] ->
+        [] -> {fast,Dir};
+        [Threat] ->
             {X,Y,R} = Threat,
-%%%             Diff = math:atan(Y-R+2/X),
             if
                 Y >= 0 -> S=1;
                 Y < 0 -> S=-1
             end,
             Diff = math:atan(S*((R+5)-abs(Y))*100/(X*X)),
             Dir1 = Dir + Diff,
-            if
-                length(Rest) > 0 -> Accel="b";
-                true -> Accel=""
-            end,
+            ?LOG({"avoid_obstacles one THREAT: ",{trunc(X),trunc(Y),trunc(R)},Diff}),
+            {normal,Dir1};
 
-            ?LOG({"avoid_obstacles THREAT: ",{Accel,trunc(X),trunc(Y),trunc(R)},Diff}),
-            {Accel,Dir1}
+        ThreatList ->
+            {X,Y,R} = lists:foldl(
+                        fun({X,Y,R},{Wx,Wy,Wr}) ->
+                                Wx1 = lists:min([X,Wx]),
+                                if
+                                    abs(Y)-R<abs(Wy)-Wr -> {Wx1,Y,R};
+                                    true -> {Wx1,Wy,Wr}
+                                end
+                        end,
+                        {1000,1000,1},
+                        ThreatList),
+            if
+                Y >= 0 -> S=1;
+                Y < 0 -> S=-1
+            end,
+            Diff = math:atan(S*((R+5)-abs(Y))*100/(X*X)),
+            Dir1 = Dir + Diff,
+            ?LOG({"avoid_obstacles THREAT: ",{trunc(X),trunc(Y),trunc(R)},Diff}),
+            {slow,Dir1}
+
     end.
 
 coords_to_pov(Ox,Oy,Dir,{X,Y}) ->
@@ -225,9 +248,38 @@ correct_turn(Cur,Goal) ->
     end,
     C.
 
+accel_goal(CurSpeed,MaxSpeed,Style) ->
+    case Style of
+        fast ->
+            if
+                CurSpeed == MaxSpeed -> "-";
+                true -> "a"
+            end;
+        normal ->
+            if
+                CurSpeed > (4*MaxSpeed)/5 -> "b";
+                CurSpeed > (2*MaxSpeed)/3 -> "-";
+                true -> "a"
+            end;
+        slow ->
+            if
+                CurSpeed > MaxSpeed/2 -> "b";
+                CurSpeed > MaxSpeed/3 -> "-";
+                true -> "a"
+            end
+    end.
 
-
-
+correct_accel(Cur,Goal) ->
+    case Goal of
+        Cur -> "";
+        "a" -> "a";
+        "b" -> "b";
+        "-" ->
+            case Cur of
+                "a" -> "b";
+                "b" -> "a"
+            end
+    end.
 
 
 
