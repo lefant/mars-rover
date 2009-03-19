@@ -151,11 +151,18 @@ avoid_obstacle(World,Dir) ->
           Dangers1),
 %%    ?LOG({"avoid_obstacles obstacles: ",Obstacles}),
     %% filter out everything we cannot hit by going straight ahead
+
+    MinDist =
+        lists:min([
+                   30,
+                   math:sqrt(
+                     World#world.x*World#world.x
+                     +World#world.y*World#world.y)]),
     Obstacles1 =
         lists:filter(
           fun({X,Y,R})->
 %%%                   ?LOG({"avoid_obstacles filtering: ",X,Y,R,abs(Y)-R}),
-                  ((X > 0) and (X-R < 50)) and (abs(Y) < R+2)
+                  ((X > 0) and (X-R < MinDist)) and (abs(Y) < R+2)
           end,
           Obstacles),
 %%%     ?LOG({"avoid_obstacles filtered obstacles: ",Obstacles1}),
