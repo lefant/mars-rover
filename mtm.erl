@@ -73,7 +73,10 @@ run() ->
 
 
 connect_simulator(Host,Port) ->
-    {ok, Socket} = gen_tcp:connect(Host,Port, [binary, {packet, 0}]),
+    {ok, Socket} = gen_tcp:connect(Host,Port,
+                                   [binary,
+                                    {packet, 0},
+                                    {nodelay, true}]),
     ?LOG("connection to simulator successfully established"),
     World=#world{},
     receive_loop(Socket,World).
@@ -117,6 +120,8 @@ desired_dir(World) ->
     {Speed,DesDir2} = avoid_obstacle(World,DesDir1),
     Diff = DesDir2 - Dir,
     {Speed,Diff}.
+
+
 
 
 avoid_obstacle(World,Dir) ->
@@ -215,6 +220,7 @@ avoid_obstacle(World,Dir) ->
 
     end.
 
+
 coords_to_pov(Ox,Oy,Dir,{X,Y}) ->
     X1 = X-Ox,
     Y1 = Y-Oy,
@@ -224,6 +230,8 @@ coords_to_pov(Ox,Oy,Dir,{X,Y}) ->
     Y2 = Y1*Cos+X1*Sin,
     %%?LOG({"coords_to_pov: ",{Ox,Oy},Dir,{X,Y},{X1,Y1},{sin,Sin},{cos,Cos},{X2,Y2}}),
     {X2,Y2}.
+
+
 
 
 
