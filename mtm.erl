@@ -48,17 +48,9 @@ connect_simulator(Host,Port) ->
 receive_loop(Socket,World) ->
     receive
         {tcp,Socket,Bin} ->
-            %?LOG({"receive_loop: binary ",Bin}),
             {ok, Msg} = regexp:split(binary_to_list(Bin)," "),
-            %?LOG({"receive_loop: after split ",Msg}),
             World1 = parse_message(World#world{aliens=[]},Msg),
-            %?LOG({"receive_loop: parse result ",World1}),
-%%%             ?LOG({"vehicle dir: ",World1#world.vehicledir}),
-%%%             ?LOG({"vehiclex: ",World1#world.vehiclex}),
-%%%             ?LOG({"vehicley: ",World1#world.vehicley}),
-            Command = desired_steer(World1),
-            ?LOG({"desired dir: ",Command}),
-            gen_tcp:send(Socket,Command),
+            gen_tcp:send(Socket,get_command(World1)),
             receive_loop(Socket,World1);
         {tcp_closed,Socket} ->
             ok
@@ -66,36 +58,27 @@ receive_loop(Socket,World) ->
     
 
 desired_dir(World) ->
-    {Hx,Hy,_} = World#world.home,
-    ?LOG({"Hx, Hy: ",Hx,Hy}),
-    Vx = World#world.vehiclex,
-    ?LOG({"Vx: ",Vx}),
-    Vy = World#world.vehicley,
-    ?LOG({"Vy: ",Vy}),
-    Dx = Hx - Vx,
-    ?LOG({"Dx: ",Dx}),
-    Dy = Hy - Vy,
-    ?LOG({"Dy: ",Dy}),
-    I = Vy*Dy-Vx*Dx,
-    ?LOG({"I: ",I}),
-    I.
-
-desired_dir2(World) ->
     X = World#world.vehiclex,
     Y = World#world.vehicley,
     Dir = World#world.vehicledir,
-    math:sin(Y/X)-Dir.
+    DesDir = (math:atan(Y/X)/math:pi())*180,
+    if
+        (Y < 0) and (X > 0) -> DesDir1 = DesDir + 180;
+        (X < 0) and (Y > 0) -> DesDir1 = DesDir + 180;
+        true -> DesDir1 = DesDir
+    end,
+    Diff = DesDir1 - Dir,
+    ?LOG({"desire: ",X,Y,Dir,DesDir,Diff}),
+    Diff.
 
-desired_steer(World) ->
-    Dir = desired_dir2(World),
-    Ctl = World#world.vehiclectl,
-    ?LOG({"Ctl: ",Ctl}),
-    Ctl1 = string:substr(Ctl, 2),
-    ?LOG({"Ctl1: ",Ctl1}),
-    case Ctl1 of
+get_command(World) ->
+    Dir = desired_dir(World),
+    Ctl = string:substr(World#world.vehiclectl, 2),
+    %%?LOG({"Ctl1: ",Ctl1}),
+    case Ctl of
         "L" ->
             if
-                Dir < 100 ->
+                Dir < 10 ->
                     Command = list_to_binary("ar;");
                 true ->
                     Command = list_to_binary("a;")
@@ -104,7 +87,7 @@ desired_steer(World) ->
             if
                 Dir < 0 ->
                     Command = list_to_binary("ar;");
-                Dir > 100 ->
+                Dir > 10 ->
                     Command = list_to_binary("al;");
                 true ->
                     Command = list_to_binary("a;")
@@ -120,7 +103,7 @@ desired_steer(World) ->
             end;
         "r" ->
             if 
-                Dir < -100 ->
+                Dir < -10 ->
                     Command = list_to_binary("ar;");
                 Dir > 0 ->
                     Command = list_to_binary("al;");
@@ -129,12 +112,13 @@ desired_steer(World) ->
             end;
         "R" ->
             if 
-                Dir > -100 ->
+                Dir > -10 ->
                     Command = list_to_binary("al;");
                 true ->
                     Command = list_to_binary("a;")
             end
     end,
+    ?LOG({"steer: ",Ctl,Command,Dir}),
     Command.
 
 parse_message(World,["T"|List]) ->
@@ -174,7 +158,7 @@ parse_message(World,[Time,Event,";"]) ->
 
 parse_object_list(World,[";"]) ->
     World;
-parse_object_list(World,[Type,X,Y,Dir,Speed|Rest]) when Type == "a" ->
+parse_object_list(World,[Type,X,Y,Dir,Speed|Rest]) when Type == "m" ->
     AlreadyKnown = lists:member(
                      {X,Y,Dir,Speed},
                      World#world.aliens),
