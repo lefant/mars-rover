@@ -240,29 +240,29 @@ turn_goal(Diff) ->
     end.
 
 correct_turn(Cur,Goal) ->
-    case Cur of
-        Goal -> C = "";
-        "R" -> C = "l;";
-        "L" -> C = "r;";
+    case Goal of
+        Cur -> "";
+        "R" -> "r;";
+        "L" -> "l;";
         "r" ->
             if
-                Goal == "R" -> C = "r;";
-                true -> C = "l;"
+                Cur == "R" -> "l;";
+                true -> "r;"
             end;
         "l" ->
             if
-                Goal == "L" -> C = "l;";
-                true -> C = "r;"
+                Cur == "L" -> "r;";
+                true -> "l;"
             end;
         "-" ->
-            case Goal of
-                "L" -> C = "l;";
-                "l" -> C = "l;";
-                "R" -> C = "r;";
-                "r" -> C = "r;"
+            case Cur of
+                "L" -> "r;";
+                "l" -> "r;";
+                "R" -> "l;";
+                "r" -> "l;"
             end
-    end,
-    C.
+    end.
+
 
 accel_goal(CurSpeed,MaxSpeed,Style) ->
     case Style of
