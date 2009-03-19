@@ -34,7 +34,7 @@ test() ->
     ?LOG("Debug is enabled"),
 %%%     dbg:tracer(),
 %%%     dbg:p(all, call),
-%%%     dbg:tpl(mtm, desired_dir, 1, []),
+%%%     dbg:tpl(mtm, coords_to_pov, 5, []),
 %%%     dbg:tpl(mtm, inner_prod, 4, []),
 %%%     dbg:tpl(mtm, receive_data, 3, []),
     connect_simulator(localhost,17676).
@@ -61,14 +61,43 @@ desired_dir(World) ->
     X = World#world.vehiclex,
     Y = World#world.vehicley,
     Dir = World#world.vehicledir,
-    DesDir = (math:atan(Y/X)/math:pi())*180,
+    %%DesDir = (math:atan(Y/X)/math:pi())*180,
+    DesDir = math:atan(Y/X),
     if
-        X > 0 -> DesDir1 = DesDir + 180;
+        X > 0 -> DesDir1 = DesDir + math:pi();
         true -> DesDir1 = DesDir
     end,
     Diff = DesDir1 - Dir,
-    ?LOG({"desire: ",X,Y,Dir,DesDir,Diff}),
+    %%?LOG({"desire: ",X,Y,Dir,DesDir,Diff}),
+    %%check_rectangle(World,(DesDir1/180)*math:pi()),
+%%%     check_rectangle(World,DesDir1),
     Diff.
+
+coords_to_pov(Ox,Oy,Dir,X,Y) ->
+    X1 = X-Ox,
+    Y1 = Y-Oy,
+    X2 = X1*math:sin(Dir) - Y1*math:cos(Dir),
+    Y2 = X1*math:cos(Dir) + Y1*math:sin(Dir),
+    ?LOG({"coords_to_pov: ",{Ox,Oy},Dir,{X,Y},{X1,Y1},{X2,Y2}}),
+    [X2,Y2].
+
+%% check_rectangle(World,Dir) ->
+%%     X = World#world.vehiclex,
+%%     Y = World#world.vehicley,
+%%     R = 0.5,
+%%     L = 10,
+%%     Vx = math:sin(Dir),
+%%     Vy = math:cos(Dir),
+%%     B1X = X-Vy*R,
+%%     B1Y = Y+Vx*R,
+%%     B2X = X+Vy*R,
+%%     B2Y = Y-Vx*R,
+%%     F1X = B1X+Vx*L,
+%%     F1Y = B1Y+Vy*L,
+%%     F2X = B2X+Vx*L,
+%%     F2Y = B2Y+Vy*L,
+%%     ok.
+
 
 get_command(World) ->
     Dir = desired_dir(World),
@@ -77,7 +106,7 @@ get_command(World) ->
     case Ctl of
         "L" ->
             if
-                Dir < 10 ->
+                Dir < 0.2 ->
                     Command = list_to_binary("ar;");
                 true ->
                     Command = list_to_binary("a;")
@@ -86,7 +115,7 @@ get_command(World) ->
             if
                 Dir < 0 ->
                     Command = list_to_binary("ar;");
-                Dir > 10 ->
+                Dir > 0.2 ->
                     Command = list_to_binary("al;");
                 true ->
                     Command = list_to_binary("a;")
@@ -102,7 +131,7 @@ get_command(World) ->
             end;
         "r" ->
             if 
-                Dir < -10 ->
+                Dir < -0.2 ->
                     Command = list_to_binary("ar;");
                 Dir > 0 ->
                     Command = list_to_binary("al;");
@@ -111,13 +140,13 @@ get_command(World) ->
             end;
         "R" ->
             if 
-                Dir > -10 ->
+                Dir > -0.2 ->
                     Command = list_to_binary("al;");
                 true ->
                     Command = list_to_binary("a;")
             end
     end,
-    ?LOG({"steer: ",Ctl,Command,Dir}),
+    %%?LOG({"steer: ",Ctl,Command,Dir}),
     Command.
 
 parse_message(World,["T"|List]) ->
@@ -127,7 +156,7 @@ parse_message(World,["T"|List]) ->
       vehiclectl=VehicleCtl,
       vehiclex=str2num(VehicleX),
       vehicley=str2num(VehicleY),
-      vehicledir=str2num(VehicleDir),
+      vehicledir=(str2num(VehicleDir)/180)*math:pi(),
       vehiclespeed=str2num(VehicleSpeed)
      },
     parse_object_list(World1,ObjectList);
@@ -171,7 +200,10 @@ parse_object_list(World,[Type,X,Y,Dir,Speed|Rest]) when Type == "m" ->
                },Rest)
     end;
 
-parse_object_list(World,[Type,X,Y,R|Rest]) ->
+parse_object_list(World,[Type,X1,Y1,R1|Rest]) ->
+    X = str2num(X1),
+    Y = str2num(Y1),
+    R = str2num(R1),
     case Type of
         "b" ->
             AlreadyKnown = lists:member(
@@ -198,6 +230,7 @@ parse_object_list(World,[Type,X,Y,R|Rest]) ->
             end;
         "h" ->
             %%parse_object_list(World#world{home={X,Y,R}},Rest)
+            coords_to_pov(World#world.vehiclex,World#world.vehicley,World#world.vehicledir,X,Y),
             parse_object_list(World,Rest)
     end.
 
