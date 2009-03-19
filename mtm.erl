@@ -108,7 +108,6 @@ desired_dir(World) ->
     X = World#world.x,
     Y = World#world.y,
     Dir = World#world.dir,
-    %%DesDir = (math:atan(Y/X)/math:pi())*180,
     DesDir = math:atan(Y/X),
     if
         X > 0 -> DesDir1 = DesDir + math:pi();
@@ -183,26 +182,36 @@ avoid_obstacle(World,Dir) ->
             Dir1 = Dir + Diff,
             ?LOG({"avoid_obstacles one THREAT: ",{trunc(X),trunc(Y),trunc(R)},Diff}),
             {normal,Dir1};
-
-        ThreatList ->
-            {X,Y,R} = lists:foldl(
-                        fun({X,Y,R},{Wx,Wy,Wr}) ->
-                                Wx1 = lists:min([X,Wx]),
-                                if
-                                    abs(Y)-R<abs(Wy)-Wr -> {Wx1,Y,R};
-                                    true -> {Wx1,Wy,Wr}
-                                end
-                        end,
-                        {1000,1000,1},
-                        ThreatList),
+        [Threat|_] ->
+            {X,Y,R} = Threat,
             if
                 Y >= 0 -> S=1;
                 Y < 0 -> S=-1
             end,
             Diff = math:atan(S*((R+5)-abs(Y))*100/(X*X)),
             Dir1 = Dir + Diff,
-            ?LOG({"avoid_obstacles THREAT: ",{trunc(X),trunc(Y),trunc(R)},Diff}),
+            ?LOG({"avoid_obstacles one THREAT: ",{trunc(X),trunc(Y),trunc(R)},Diff}),
             {slow,Dir1}
+
+%%%         ThreatList ->
+%%%             {X,Y,R} = lists:foldl(
+%%%                         fun({X,Y,R},{Wx,Wy,Wr}) ->
+%%%                                 Wx1 = lists:min([X,Wx]),
+%%%                                 if
+%%%                                     abs(Y)-R<abs(Wy)-Wr -> {Wx1,Y,R};
+%%%                                     true -> {Wx1,Wy,Wr}
+%%%                                 end
+%%%                         end,
+%%%                         {1000,1000,1},
+%%%                         ThreatList),
+%%%             if
+%%%                 Y >= 0 -> S=1;
+%%%                 Y < 0 -> S=-1
+%%%             end,
+%%%             Diff = math:atan(S*((R+5)-abs(Y))*100/(X*X)),
+%%%             Dir1 = Dir + Diff,
+%%%             ?LOG({"avoid_obstacles THREAT: ",{trunc(X),trunc(Y),trunc(R)},Diff}),
+%%%             {slow,Dir1}
 
     end.
 
