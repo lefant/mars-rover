@@ -63,8 +63,7 @@ desired_dir(World) ->
     Dir = World#world.vehicledir,
     DesDir = (math:atan(Y/X)/math:pi())*180,
     if
-        (Y < 0) and (X > 0) -> DesDir1 = DesDir + 180;
-        (X < 0) and (Y > 0) -> DesDir1 = DesDir + 180;
+        X > 0 -> DesDir1 = DesDir + 180;
         true -> DesDir1 = DesDir
     end,
     Diff = DesDir1 - Dir,
