@@ -31,6 +31,7 @@
           speed = 0
          }).
 
+
 test() ->
     ?LOG("Debug is enabled"),
 %%%     dbg:tracer(),
@@ -38,7 +39,38 @@ test() ->
 %%%     dbg:tpl(mtm, coords_to_pov, 5, []),
 %%%     dbg:tpl(mtm, inner_prod, 4, []),
 %%%     dbg:tpl(mtm, receive_data, 3, []),
+    {0,0} = test_pov(0,0,0),
+    {0,0} = test_pov(0,0,1),
+
+    {1,0} = test_pov(1,0,0),
+    {0,1} = test_pov(0,1,0),
+
+    {0,1} = test_pov(1,0,1),
+    {-1,0} = test_pov(0,1,1),
+    {0,-1} = test_pov(-1,0,1),
+    {1,0} = test_pov(0,-1,1),
+
+    {-1.0,-1.0} = coords_to_pov(1,1,0,{0,0}),
+    {0.0,0.0} = coords_to_pov(-1,0,0,{-1,0}),
+
+%%    {71.34723270146793,46.436451994554766}}
+    coords_to_pov(116.633,-149.557,2.2331334012628097,{109.375,-234.375}),
+    coords_to_pov(116,-149,2.2331334012628097,{109,-234}),
+    coords_to_pov(100,-150,2.2331334012628097,{100,-250}),
+    coords_to_pov(0,0,2.2331334012628097,{0,-100}),
+    coords_to_pov(0,0,2.2331334012628097,{0,-100}),
+    coords_to_pov(0,0,2.2331334012628097,{0,-1}),
+    coords_to_pov(0,0,math:pi()/2,{0,-1}),
+    coords_to_pov(0,0,math:pi(),{0,-1}),
+    ok.
+test_pov(X,Y,E) ->
+    {X1,Y1} = coords_to_pov(0,0,E*(math:pi()/2),{X,Y}),
+    {trunc(X1),trunc(Y1)}.
+
+
+run() ->
     connect_simulator(localhost,17676).
+
 
 connect_simulator(Host,Port) ->
     {ok, Socket} = gen_tcp:connect(Host,Port, [binary, {packet, 0}]),
@@ -75,8 +107,8 @@ desired_dir(World) ->
         true -> DesDir1 = DesDir
     end,
 
-    avoid_obstacle(World,DesDir1),
-    Diff = DesDir1 - Dir,
+    DesDir2 = avoid_obstacle(World,DesDir1),
+    Diff = DesDir2 - Dir,
     %%?LOG({"desire: ",X,Y,Dir,DesDir,Diff}),
     %%check_rectangle(World,(DesDir1/180)*math:pi()),
 %%%     check_rectangle(World,DesDir1),
@@ -86,59 +118,78 @@ desired_dir(World) ->
 avoid_obstacle(World,Dir) ->
     %% build a list of all dangers, excluding ones
     %% we cannot hit without going at least 100
-    Dangers =
+    Dangers = World#world.craters ++ World#world.boulders ++
+        lists:map(
+          fun({X,Y,_,_}) ->
+                  {X,Y,1}
+          end,
+          World#world.aliens),
+%%    ?LOG({"avoid_obstacles dangers: ",Dangers}),
+    Dangers1 =
         lists:filter(
           fun({X,Y,R})->
-                  lists:min([abs(X-World#world.x),abs(Y-World#world.y)]) - R > 100
+                  lists:min([abs(X-World#world.x),abs(Y-World#world.y)]) - R < 50
           end,
-          World#world.craters ++ World#world.boulders),
+          Dangers),
+%%    ?LOG({"avoid_obstacles prefiltered dangers: ",Dangers1}),
+
     %% convert all coordinates to ones relative to our vehicle facing
     %% forward on the Y-axis
     Obstacles = 
         lists:map(
           fun({X,Y,R})->
                   {X1,Y1} = coords_to_pov(
-                            World#world.x,World#world.y,World#world.dir,
+                            World#world.x,World#world.y,Dir,
                             {X,Y}),
                   {X1,Y1,R}
           end,
-          Dangers),
-    ?LOG({"avoid_obstacles: ",length(Dangers),length(Obstacles)}),
-    Dir1 = Dir,
-    Dir1.
+          Dangers1),
+%%    ?LOG({"avoid_obstacles obstacles: ",Obstacles}),
+    %% filter out everything we cannot hit by going straight ahead
+    Obstacles1 =
+        lists:filter(
+          fun({X,Y,R})->
+%%%                   ?LOG({"avoid_obstacles filtering: ",X,Y,R,abs(Y)-R}),
+                  ((X > 0) and (X-R < 50)) and (abs(Y) < R+2)
+          end,
+          Obstacles),
+%%%     ?LOG({"avoid_obstacles filtered obstacles: ",Obstacles1}),
+%%    ?LOG({"avoid_obstacles: ",length(Dangers),length(Dangers1),length(Obstacles),length(Obstacles1)}),
 
-
+    SortedObstacles = lists:keysort(2,Obstacles1),
+%%%     ?LOG({"avoid_obstacles sorted obstacles: ",SortedObstacles}),
+    case SortedObstacles of
+        [] -> Dir;
+        [Threat|_] ->
+            {X,Y,R} = Threat,
+%%%             Diff = math:atan(Y-R+2/X),
+            if
+                Y >= 0 -> S=1;
+                Y < 0 -> S=-1
+            end,
+            Diff = math:atan(S*((R+5)-abs(Y))*100/(X*X)),
+            Dir1 = Dir + Diff,
+            ?LOG({"avoid_obstacles THREAT: ",{trunc(X),trunc(Y),trunc(R)},Diff}),
+            Dir1
+%%            throw(justquit)
+    end.
 
 coords_to_pov(Ox,Oy,Dir,{X,Y}) ->
     X1 = X-Ox,
     Y1 = Y-Oy,
-    X2 = X1*math:sin(Dir) - Y1*math:cos(Dir),
-    Y2 = X1*math:cos(Dir) + Y1*math:sin(Dir),
-    ?LOG({"coords_to_pov: ",{Ox,Oy},Dir,{X,Y},{X1,Y1},{X2,Y2}}),
+    Sin = math:sin(Dir),
+    Cos = math:cos(Dir),
+    X2 = X1*Cos-Y1*Sin,
+    Y2 = Y1*Cos+X1*Sin,
+    %%?LOG({"coords_to_pov: ",{Ox,Oy},Dir,{X,Y},{X1,Y1},{sin,Sin},{cos,Cos},{X2,Y2}}),
     {X2,Y2}.
 
 
-%% check_rectangle(World,Dir) ->
-%%     X = World#world.x,
-%%     Y = World#world.y,
-%%     R = 0.5,
-%%     L = 10,
-%%     Vx = math:sin(Dir),
-%%     Vy = math:cos(Dir),
-%%     B1X = X-Vy*R,
-%%     B1Y = Y+Vx*R,
-%%     B2X = X+Vy*R,
-%%     B2Y = Y-Vx*R,
-%%     F1X = B1X+Vx*L,
-%%     F1Y = B1Y+Vy*L,
-%%     F2X = B2X+Vx*L,
-%%     F2Y = B2Y+Vy*L,
-%%     ok.
 
 
 turn_goal(Diff) ->
-    HardTresh = 0.3,
-    StraightTresh = 0.1,
+    HardTresh = 0.4,
+    StraightTresh = 0.2,
     if
         Diff < (-1*HardTresh) -> "R";
         ((-1*HardTresh) =< Diff) and (Diff < StraightTresh)-> "r";
@@ -205,18 +256,35 @@ parse_message(World,["I"|List]) ->
       maxhardturn=str2num(MaxHardTurn)
      };
 parse_message(World,["E",Time,Score,";"]) ->
-    ?LOG({"parse_message: END ",Time,Score}),
-    io:format("end of round: time: ~p score: ~p~n",[Time,Score]),
+    io:format("EVENT: end of round: time: ~p score: ~p~n",[Time,Score]),
     World;
-parse_message(World,[Time,Event,";"]) ->
-    ?LOG({"parse_message: EVENT ",Time,Event}),
-    io:format("special event: time: ~p kind of event: ~p~n",[Time,Event]),
-    World.
+parse_message(World,["S",Score,";"]) ->
+    io:format("EVENT: end of round: score: ~p~n",[Score]),
+    World;
+parse_message(World,["B",Time,";"]) ->
+    io:format("EVENT: Boulder crash: ~p~n",[Time]),
+%%%     World;
+    throw({crater_crash,World});
+parse_message(World,["C",Time,";"]) ->
+    io:format("EVENT: Crater crash: ~p~n",[Time]),
+%%%     World;
+    throw({crater_crash,World});
+parse_message(World,["K",Time,";"]) ->
+    io:format("EVENT: Killed by Martian!: ~p~n",[Time]),
+    World;
+parse_message(World,[Event,Time,";"]) ->
+    io:format("EVENT: unknown!!! time: ~p kind of event: ~p~n",[Time,Event]),
+%%    World.
+    throw({unknown_event,World}).
 
 
 parse_object_list(World,[";"]) ->
     World;
-parse_object_list(World,[Type,X,Y,Dir,Speed|Rest]) when Type == "m" ->
+parse_object_list(World,[Type,X1,Y1,Dir1,Speed1|Rest]) when Type == "m" ->
+    X = str2num(X1),
+    Y = str2num(Y1),
+    Dir = str2num(Dir1),
+    Speed = str2num(Speed1),
     AlreadyKnown = lists:member(
                      {X,Y,Dir,Speed},
                      World#world.aliens),
