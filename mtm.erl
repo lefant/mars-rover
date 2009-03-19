@@ -91,10 +91,11 @@ receive_loop(Socket,World) ->
     end.
 
 get_command(World) ->
-    DiffTurn = desired_dir(World),
+    {Accel,DiffTurn} = desired_dir(World),
     TurnState = World#world.turn,
-    correct_turn(TurnState,turn_goal(DiffTurn)).
-%%%     steer(Dir,Ctl).
+    Turn = correct_turn(TurnState,turn_goal(DiffTurn)),
+    list_to_binary(string:join([Accel,Turn,";"],"")).
+
 
 desired_dir(World) ->
     X = World#world.x,
@@ -107,12 +108,9 @@ desired_dir(World) ->
         true -> DesDir1 = DesDir
     end,
 
-    DesDir2 = avoid_obstacle(World,DesDir1),
+    {Accel,DesDir2} = avoid_obstacle(World,DesDir1),
     Diff = DesDir2 - Dir,
-    %%?LOG({"desire: ",X,Y,Dir,DesDir,Diff}),
-    %%check_rectangle(World,(DesDir1/180)*math:pi()),
-%%%     check_rectangle(World,DesDir1),
-    Diff.
+    {Accel,Diff}.
 
 
 avoid_obstacle(World,Dir) ->
@@ -159,8 +157,8 @@ avoid_obstacle(World,Dir) ->
     SortedObstacles = lists:keysort(2,Obstacles1),
 %%%     ?LOG({"avoid_obstacles sorted obstacles: ",SortedObstacles}),
     case SortedObstacles of
-        [] -> Dir;
-        [Threat|_] ->
+        [] -> {"a",Dir};
+        [Threat|Rest] ->
             {X,Y,R} = Threat,
 %%%             Diff = math:atan(Y-R+2/X),
             if
@@ -169,9 +167,13 @@ avoid_obstacle(World,Dir) ->
             end,
             Diff = math:atan(S*((R+5)-abs(Y))*100/(X*X)),
             Dir1 = Dir + Diff,
-            ?LOG({"avoid_obstacles THREAT: ",{trunc(X),trunc(Y),trunc(R)},Diff}),
-            Dir1
-%%            throw(justquit)
+            if
+                length(Rest) > 0 -> Accel="b";
+                true -> Accel=""
+            end,
+
+            ?LOG({"avoid_obstacles THREAT: ",{Accel,trunc(X),trunc(Y),trunc(R)},Diff}),
+            {Accel,Dir1}
     end.
 
 coords_to_pov(Ox,Oy,Dir,{X,Y}) ->
@@ -200,28 +202,28 @@ turn_goal(Diff) ->
 
 correct_turn(Cur,Goal) ->
     case Cur of
-        Goal -> C = "a;";
-        "R" -> C = "al;";
-        "L" -> C = "ar;";
+        Goal -> C = "";
+        "R" -> C = "l;";
+        "L" -> C = "r;";
         "r" ->
             if
-                Goal == "R" -> C = "ar;";
-                true -> C = "al;"
+                Goal == "R" -> C = "r;";
+                true -> C = "l;"
             end;
         "l" ->
             if
-                Goal == "L" -> C = "al;";
-                true -> C = "ar;"
+                Goal == "L" -> C = "l;";
+                true -> C = "r;"
             end;
         "-" ->
             case Goal of
-                "L" -> C = "al;";
-                "l" -> C = "al;";
-                "R" -> C = "ar;";
-                "r" -> C = "ar;"
+                "L" -> C = "l;";
+                "l" -> C = "l;";
+                "R" -> C = "r;";
+                "r" -> C = "r;"
             end
     end,
-    list_to_binary(C).
+    C.
 
 
 
@@ -263,8 +265,8 @@ parse_message(World,["S",Score,";"]) ->
     World;
 parse_message(World,["B",Time,";"]) ->
     io:format("EVENT: Boulder crash: ~p~n",[Time]),
-%%%     World;
-    throw({crater_crash,World});
+%%%     throw({boulder_bounce,World});
+    World;
 parse_message(World,["C",Time,";"]) ->
     io:format("EVENT: Crater crash: ~p~n",[Time]),
 %%%     World;
