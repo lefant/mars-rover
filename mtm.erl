@@ -50,12 +50,18 @@ receive_loop(Socket,World) ->
         {tcp,Socket,Bin} ->
             {ok, Msg} = regexp:split(binary_to_list(Bin)," "),
             World1 = parse_message(World#world{aliens=[]},Msg),
-            gen_tcp:send(Socket,get_command(World1)),
+            Command = get_command(World1),
+            gen_tcp:send(Socket,Command),
             receive_loop(Socket,World1);
         {tcp_closed,Socket} ->
             ok
     end.
-    
+
+get_command(World) ->
+    Dir = desired_dir(World),
+    Ctl = string:substr(World#world.vehiclectl, 2),
+    correct_steer(Ctl,steering_goalstate(Dir)).
+%%%     steer(Dir,Ctl).
 
 desired_dir(World) ->
     X = World#world.vehiclex,
@@ -67,19 +73,17 @@ desired_dir(World) ->
         X > 0 -> DesDir1 = DesDir + math:pi();
         true -> DesDir1 = DesDir
     end,
+
     Diff = DesDir1 - Dir,
     %%?LOG({"desire: ",X,Y,Dir,DesDir,Diff}),
     %%check_rectangle(World,(DesDir1/180)*math:pi()),
 %%%     check_rectangle(World,DesDir1),
     Diff.
 
-coords_to_pov(Ox,Oy,Dir,X,Y) ->
-    X1 = X-Ox,
-    Y1 = Y-Oy,
-    X2 = X1*math:sin(Dir) - Y1*math:cos(Dir),
-    Y2 = X1*math:cos(Dir) + Y1*math:sin(Dir),
-    ?LOG({"coords_to_pov: ",{Ox,Oy},Dir,{X,Y},{X1,Y1},{X2,Y2}}),
-    [X2,Y2].
+
+%% avoid_obstacle(World,Dir) ->
+%%     coords_to_pov(World#world.vehiclex,World#world.vehicley,World#world.vehicledir,X,Y),
+%%     Dir1.
 
 %% check_rectangle(World,Dir) ->
 %%     X = World#world.vehiclex,
@@ -99,55 +103,56 @@ coords_to_pov(Ox,Oy,Dir,X,Y) ->
 %%     ok.
 
 
-get_command(World) ->
-    Dir = desired_dir(World),
-    Ctl = string:substr(World#world.vehiclectl, 2),
-    %%?LOG({"Ctl1: ",Ctl1}),
-    case Ctl of
-        "L" ->
+steering_goalstate(Dir) ->
+    HardTresh = 0.3,
+    StraightTresh = 0.1,
+    if
+        Dir < (-1*HardTresh) -> "R";
+        ((-1*HardTresh) =< Dir) and (Dir < StraightTresh)-> "r";
+        ((-1*StraightTresh) =< Dir) and (Dir =< StraightTresh) -> "-";
+        (StraightTresh < Dir) and (Dir < HardTresh)-> "l";
+        HardTresh < Dir -> "L"
+    end.
+
+correct_steer(Cur,Goal) ->
+    case Cur of
+        Goal -> C = "a;";
+        "R" -> C = "al;";
+        "L" -> C = "ar;";
+        "r" ->
             if
-                Dir < 0.2 ->
-                    Command = list_to_binary("ar;");
-                true ->
-                    Command = list_to_binary("a;")
+                Goal == "R" -> C = "ar;";
+                true -> C = "al;"
             end;
         "l" ->
             if
-                Dir < 0 ->
-                    Command = list_to_binary("ar;");
-                Dir > 0.2 ->
-                    Command = list_to_binary("al;");
-                true ->
-                    Command = list_to_binary("a;")
+                Goal == "L" -> C = "al;";
+                true -> C = "ar;"
             end;
         "-" ->
-            if 
-                Dir < 0 ->
-                    Command = list_to_binary("ar;");
-                Dir > 0 ->
-                    Command = list_to_binary("al;");
-                true ->
-                    Command = list_to_binary("a;")
-            end;
-        "r" ->
-            if 
-                Dir < -0.2 ->
-                    Command = list_to_binary("ar;");
-                Dir > 0 ->
-                    Command = list_to_binary("al;");
-                true ->
-                    Command = list_to_binary("a;")
-            end;
-        "R" ->
-            if 
-                Dir > -0.2 ->
-                    Command = list_to_binary("al;");
-                true ->
-                    Command = list_to_binary("a;")
+            case Goal of
+                "L" -> C = "al;";
+                "l" -> C = "al;";
+                "R" -> C = "ar;";
+                "r" -> C = "ar;"
             end
     end,
-    %%?LOG({"steer: ",Ctl,Command,Dir}),
-    Command.
+    list_to_binary(C).
+
+
+
+
+
+
+
+coords_to_pov(Ox,Oy,Dir,X,Y) ->
+    X1 = X-Ox,
+    Y1 = Y-Oy,
+    X2 = X1*math:sin(Dir) - Y1*math:cos(Dir),
+    Y2 = X1*math:cos(Dir) + Y1*math:sin(Dir),
+    ?LOG({"coords_to_pov: ",{Ox,Oy},Dir,{X,Y},{X1,Y1},{X2,Y2}}),
+    [X2,Y2].
+
 
 parse_message(World,["T"|List]) ->
     %% T time-stamp vehicle-ctl vehicle-x vehicle-y vehicle-dir vehicle-speed objects ;
@@ -230,9 +235,9 @@ parse_object_list(World,[Type,X1,Y1,R1|Rest]) ->
             end;
         "h" ->
             %%parse_object_list(World#world{home={X,Y,R}},Rest)
-            coords_to_pov(World#world.vehiclex,World#world.vehicley,World#world.vehicledir,X,Y),
             parse_object_list(World,Rest)
     end.
+
 
 str2num(Str) ->
     {Num,_} = string:to_float(Str),
