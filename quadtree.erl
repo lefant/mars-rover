@@ -10,6 +10,8 @@
 %% -endif.
 -define(LOG(Msg), io:format("{~p:~p}: ~p~n", [?MODULE, ?LINE, Msg])).
 
+-define(MINSIZE, 1).
+
 -record(node, {
           x,
           y,
@@ -35,7 +37,7 @@ test() ->
       x=0,
       y=0,
       size=20,
-      children=[],
+      children=undefined,
       status=empty
      },
 
@@ -67,30 +69,89 @@ test() ->
     true = intersects(QuadTree,{25,-25,10}),
     true = intersects(QuadTree,{-25,-25,10}),
 
+    Tree = lists:foldl(
+        fun(Circle,Node)
+           -> insert_circle(Node,Circle)
+        end,
+        QuadTree,
+        ListOfCircles),
+    walk_tree(Tree),
 
-    _ = ListOfCircles,
-%%%     lists:map(
-%%%       fun(Circle) 
-%%%          -> add_to_quadtree(QuadTree,Circle)
-%%%       end,
-%%%       ListOfCircles).
+    walk_tree(
+      insert_circle(QuadTree,{3,-4,2})),
+
     ok.
 
 
-add_to_quadtree(QuadTree,Circle) ->
-    intersects(QuadTree,Circle),
-    %%     if object intersects node
-    %%         if node is leaf
-    %%             if node.depth > max
-    %%                 node.status = obstacle
-    %%             else
-    %%                 create 4 new children
-    %%                 recurse for all children
-    %%         recurse for all children
-    QuadTree.
+insert_circle(Node,Circle) ->
+    I = intersects(Node,Circle),
+    if
+        I ->
+%%            ?LOG({"insert_circle: intersection ",Node,Circle}),
+            if
+                is_list( Node#node.children ) ->
+%%                    ?LOG("insert_circle: children found, recurse"),
+                    Node#node{
+                      children=lists:map(
+                                 fun(ChildNode) ->
+                                         insert_circle(ChildNode,Circle)
+                                 end,
+                                 Node#node.children)};
+                true ->
+%%                    ?LOG({"insert_circle: leafnode"}),
+                    if 
+                        Node#node.size > ?MINSIZE ->
+%%                            ?LOG("insert_circle: create children, recurse"),
+                            Node#node{
+                              children=lists:map(
+                                         fun(ChildNode) ->
+                                                 insert_circle(ChildNode,Circle)
+                                         end,
+                                         new_children(Node))};
+                        true ->
+%%                            ?LOG("insert_circle: min size, set status obstacle"),
+                            Node#node{status=obstacle}
+                    end
+            end;
+        true -> Node
+    end.
 
+new_children(Node) ->
+    NewSize = Node#node.size/2,
+    [
+     #node{
+      x=Node#node.x+NewSize,
+      y=Node#node.y+NewSize,
+      size=NewSize
+     },
+                #node{
+      x=Node#node.x+NewSize,
+      y=Node#node.y-NewSize,
+      size=NewSize
+     },
+                #node{
+      x=Node#node.x-NewSize,
+      y=Node#node.y+NewSize,
+      size=NewSize
+     },
+                #node{
+      x=Node#node.x-NewSize,
+      y=Node#node.y-NewSize,
+      size=NewSize
+     }].
 
-
+walk_tree(Node) ->
+    if
+        is_list(Node#node.children) ->
+            io:format("~p ~p~n", [string:copies(" ",50-trunc(2*Node#node.size)),{Node#node.x,Node#node.y}]),
+            lists:map(
+              fun(ChildNode) ->
+                      walk_tree(ChildNode)
+              end,
+              Node#node.children);
+        true ->
+            io:format("~p ~p~n", [string:copies(" ",50-trunc(2*Node#node.size)),{Node#node.x,Node#node.y}])
+    end.
 
 
 
@@ -159,27 +220,7 @@ intersects(Node,{X,Y,R}) ->
             end;
         true -> false
     end.
-    
-
-
-
-
-
-coords_to_pov(Ox,Oy,Dir,{X,Y}) ->
-    X1 = X-Ox,
-    Y1 = Y-Oy,
-    Sin = math:sin(Dir),
-    Cos = math:cos(Dir),
-    X2 = X1*Cos-Y1*Sin,
-    Y2 = Y1*Cos+X1*Sin,
-    %%?LOG({"coords_to_pov: ",{Ox,Oy},Dir,{X,Y},{X1,Y1},{sin,Sin},{cos,Cos},{X2,Y2}}),
-    {X2,Y2}.
-
 
 
 sqr(X) ->
     X*X.
-
-str2num(Str) ->
-    {Num,_} = string:to_float(Str),
-    Num.
