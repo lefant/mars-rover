@@ -83,7 +83,25 @@ test() ->
 %%%     walk_tree(Tree),
     MyNode = find_node(Tree,{9,9}),
     find_parent(Tree,MyNode),
-    neighbours(Tree,MyNode).
+    neighbours(Tree,MyNode),
+
+    %% gs:create(rectangle,can1,[{coords,[{100,100},{200,200}]}]),
+
+    I=gs:start(),
+    Win=gs:create(window, I,
+                  [{width, 1000},{height, 1000},
+                   {title,"Default Demo"},{map, true}]),
+    gs:create(canvas, can1,Win,
+              [{x,0},{y, 0},{width,1000},{height,1000},
+               {default,rectangle,{fill,black}},
+               {default,oval,{fill,green}}]),
+    gs:create(rectangle,can1,[{coords,[{100,100},{200,200}]}]),
+    ok.
+
+
+%% {A,B,C} = erlang:now(),
+%% random:seed(A,B,C),
+
 
 
 insert_circle(Node,Circle) ->
