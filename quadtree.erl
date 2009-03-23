@@ -10,7 +10,7 @@
 %% -endif.
 -define(LOG(Msg), io:format("{~p:~p}: ~p~n", [?MODULE, ?LINE, Msg])).
 
--define(MINSIZE, 3).
+-define(MINSIZE, 0.1).
 
 -record(node, {
           x,
@@ -24,7 +24,7 @@ test() ->
     ?LOG("Debug is enabled"),
     dbg:tracer(),
     dbg:p(all, call),
-%%%     dbg:tpl(quadtree, within, 2, []),
+%%%     dbg:tpl(quadtree, astar, 5, []),
 %%%     dbg:tpl(quadtree, within_circle, 2, []),
 %%%     dbg:tpl(quadtree, within_node, 2, []),
 %%%     dbg:tpl(quadtree, intersects_node, 2, []),
@@ -99,19 +99,99 @@ test() ->
                {default,oval,{fill,green}}]),
     %% gs:create(rectangle,can1,[{coords,[{100,100},{200,200}]}]),
 
-    %% visualize(Tree),
-
     visualize(Tree),
-    visualize(MyNode,blue),
+
+    %% visualize(Tree),
+    %% visualize(MyNode,blue),
+    %% lists:map(
+    %%   fun(Node) -> visualize(Node,yellow) end,
+    %%   neighbours(Tree,MyNode)),
+
     lists:map(
-      fun(Node) -> visualize(Node,yellow) end,
-      neighbours(Tree,MyNode)),
+      fun(Node) -> visualize(Node,orange) end,
+      astar(Tree,{-9,-9},{9,9})),
     ok.
 
 
 %% {A,B,C} = erlang:now(),
 %% random:seed(A,B,C),
 
+
+astar(Tree,StartPoint,GoalPoint) ->
+    StartNode = find_node(Tree,StartPoint),
+    GoalNode = find_node(Tree,GoalPoint),
+    astar(Tree,GoalPoint,GoalNode,[],[{StartNode,0,[]}]).
+astar_sort(Tree,GoalPoint,GoalNode,Closed,Open) ->
+    SortedOpen = lists:sort(
+      fun({Node1,_,_},{Node2,_,_}) ->
+              min_dist2(Node1,GoalPoint) < min_dist2(Node2,GoalPoint)
+      end,
+      Open),
+    astar(Tree,GoalPoint,GoalNode,Closed,SortedOpen).
+astar(_,_,_,_,[]) ->
+    failure;
+astar(Tree,GoalPoint,GoalNode,Closed,[{Node,CostSoFar,PathSoFar}|Open]) ->
+    IsGoalReached = eq_node(Node,GoalNode),
+    if
+        IsGoalReached -> [Node|PathSoFar];
+        true ->
+            OpenNeighbours =
+                lists:filter(
+                  fun(MaybeOpenNode) ->
+                          not lists:any(
+                                fun(ClosedNode) ->
+                                        eq_node(MaybeOpenNode,ClosedNode)
+                                end,
+                                Closed)
+                  end,
+                  neighbours(Tree,Node)),
+
+            NewOpen =
+                lists:foldl(
+                  fun(NeighbourNode,Open1) ->
+                          NeighbourDist = node_dist2(Node,NeighbourNode),
+                          AlreadyOpen =
+                              lists:filter(
+                                fun({OpenNode,_,_}) ->
+                                        eq_node(NeighbourNode,OpenNode)
+                                end,
+                                Open1),
+                          case AlreadyOpen of
+                              [] ->
+                                  [{NeighbourNode,
+                                    CostSoFar+NeighbourDist,
+                                    [Node|PathSoFar]}|Open1];
+                              [OldNode] ->
+                                  {OpenNode,OldCost,_} = OldNode,
+                                  NewCost = CostSoFar+NeighbourDist,
+                                  if
+                                      NewCost < OldCost ->
+                                          replace_node(
+                                            {OpenNode,NewCost,[Node|PathSoFar]},
+                                            Open1);
+                                      true ->
+                                          Open1
+                                  end
+                          end
+                  end,
+                  Open,
+                  OpenNeighbours),
+            astar_sort(Tree,GoalPoint,GoalNode,[Node|Closed],NewOpen)
+    end.
+            
+
+replace_node(Item,List) ->
+    replace_node(Item,List,[]).
+replace_node(_,[],Res) ->
+    Res;
+replace_node(Item,[H|List],Res) ->
+    {NewNode,_,_} = Item,
+    {OldNode,_,_} = H,
+    E = eq_node(NewNode,OldNode),
+    if
+        E -> replace_node(Item,List,[Item|Res]);
+        true -> replace_node(Item,List,[H|Res])
+    end.
 
 
 insert_circle(Node,Circle) ->
@@ -217,10 +297,10 @@ stretch(X) ->
     (X+20)*10.
 
 find_node(Node,{X,Y}) ->
-    io:format("find_node: ~p ~p~n", [string:copies(" ",50-trunc(2*Node#node.size)),{Node#node.x,Node#node.y}]),
+    %% io:format("find_node: ~p ~p~n", [string:copies(" ",50-trunc(2*Node#node.size)),{Node#node.x,Node#node.y}]),
     if
         is_list(Node#node.children) ->
-            ?LOG({"find_node: children"}),
+            %% ?LOG({"find_node: children"}),
             [MyChild] = lists:filter(
               fun(ChildNode) ->
                       within_node(ChildNode,{X,Y})
@@ -228,12 +308,11 @@ find_node(Node,{X,Y}) ->
               Node#node.children),
             find_node(MyChild,{X,Y});
         true -> 
-            ?LOG({"find_node: leafnode"}),
+            %% ?LOG({"find_node: leafnode"}),
             Node
     end.
 
 find_parent(Node,Leaf) ->
-    io:format("find_parent: ~p ~p~n", [string:copies(" ",50-trunc(2*Node#node.size)),{Node#node.x,Node#node.y}]),
     if
         is_list(Node#node.children) ->
             [MyChild] = lists:filter(
@@ -291,9 +370,21 @@ node_within_circle(Node,Circle) ->
       fun(Point) -> within_circle(Circle,Point) end,
       node_corners(Node)).
 
-within_circle({X,Y,R},{Xp,Yp}) ->
-    sqr(X-Xp) + sqr(Y-Yp) =< sqr(R).
+within_circle({X,Y,R},Point) ->
+    dist2({X,Y},Point) =< sqr(R).
 
+min_dist2(Node,Point) ->
+    lists:min(
+      lists:map(
+        fun(NPoint) -> dist2(Point,NPoint) end,
+        node_corners(Node))).
+
+dist2({X1,Y1},{X2,Y2}) ->
+    sqr(X1-X2) + sqr(Y1-Y2).
+
+node_dist2(Node1,Node2) ->
+    dist2({Node1#node.x,Node1#node.y},
+          {Node2#node.x,Node2#node.y}).
 
 eq_node(Node1,Node2) ->
     (((Node1#node.x == Node2#node.x)
@@ -316,7 +407,7 @@ neighbours(Node,Leaf) ->
                       {ChildNode#node.x,
                        ChildNode#node.y,
                        ChildNode#node.size - ?MINSIZE/2})),
-              ?LOG({"neighbours: within",Res}),
+              %% ?LOG({"neighbours: within",Res}),
               Res
       end,
       neighbours_rec(Node,
@@ -342,14 +433,13 @@ neighbours(Node,Leaf) ->
 
 
 neighbours_rec(Node,Leaf) ->
-    io:format("neighbours: ~p ~p~n", [string:copies(" ",50-trunc(2*Node#node.size)),{Node#node.x,Node#node.y}]),
     I = intersects_node(Node,Leaf),
     if
         I ->
-            ?LOG({"neighbours: intersects"}),
+            %% ?LOG({"neighbours: intersects"}),
             if
                 is_list(Node#node.children) ->
-                    ?LOG({"neighbours: children"}),
+                    %% ?LOG({"neighbours: children"}),
                     lists:flatmap(
                       fun(ChildNode) ->
                               neighbours_rec(ChildNode,Leaf)
@@ -360,7 +450,7 @@ neighbours_rec(Node,Leaf) ->
                         end,
                         Node#node.children));
                 true ->
-                    ?LOG({"neighbours: leafnode"}),
+                    %% ?LOG({"neighbours: leafnode"}),
                     if
                         Node#node.status == empty -> [Node];
                         true -> []
