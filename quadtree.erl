@@ -24,7 +24,8 @@ test() ->
     ?LOG("Debug is enabled"),
     dbg:tracer(),
     dbg:p(all, call),
-%%%     dbg:tpl(quadtree, find_node, 2, []),
+%%%     dbg:tpl(quadtree, within, 2, []),
+%%%     dbg:tpl(quadtree, within_node, 2, []),
 %%%     dbg:tpl(quadtree, within_node, 2, []),
 %%%     dbg:tpl(quadtree, intersects_node, 2, []),
 %%%     dbg:tpl(quadtree, within, 2, []),
@@ -95,7 +96,15 @@ test() ->
               [{x,0},{y, 0},{width,1000},{height,1000},
                {default,rectangle,{fill,black}},
                {default,oval,{fill,green}}]),
-    gs:create(rectangle,can1,[{coords,[{100,100},{200,200}]}]),
+    %% gs:create(rectangle,can1,[{coords,[{100,100},{200,200}]}]),
+
+    %% visualize(Tree),
+
+    visualize(Tree),
+    visualize(MyNode,red),
+    lists:map(
+      fun(Node) -> visualize(Node,yellow) end,
+      neighbours(Tree,MyNode)),
     ok.
 
 
@@ -175,6 +184,35 @@ walk_tree(Node) ->
             io:format("~p ~p~n", [string:copies(" ",50-trunc(2*Node#node.size)),{Node#node.x,Node#node.y}])
     end.
 
+visualize(Node) ->
+    visualize(Node,green).
+visualize(Node,Color) ->
+    if
+        is_list(Node#node.children) ->
+            lists:map(
+              fun(ChildNode) ->
+                      visualize(ChildNode)
+              end,
+              Node#node.children);
+        true ->
+            draw(Node,Color)
+    end.
+
+draw(Node,Color1) ->
+    [{X1,Y1},{X2,Y2},_,_] = corners({Node#node.x,Node#node.y,Node#node.size}),
+    case Node#node.status of
+        obstacle -> Color = black;
+        empty -> Color = Color1
+    end,
+    gs:create(rectangle,can1,
+              [{coords,
+                [{stretch(X1),stretch(Y1)},
+                 {stretch(X2),stretch(Y2)}]},
+               {fill,Color}]).
+
+stretch(X) ->
+    (X+20)*10.
+
 find_node(Node,{X,Y}) ->
     io:format("find_node: ~p ~p~n", [string:copies(" ",50-trunc(2*Node#node.size)),{Node#node.x,Node#node.y}]),
     if
@@ -209,20 +247,20 @@ find_parent(Node,Leaf) ->
     end.
 
 
-within_node(Node,{X,Y}) ->
-    (((Node#node.x-Node#node.size) < X)
-     and (X =< (Node#node.x+Node#node.size)))
-        and
-          (((Node#node.y-Node#node.size) < Y)
-           and (Y =< (Node#node.y+Node#node.size))).
+%% within_node(Node,{X,Y}) ->
+%%     (((Node#node.x-Node#node.size) < X)
+%%      and (X =< (Node#node.x+Node#node.size)))
+%%         and
+%%           (((Node#node.y-Node#node.size) < Y)
+%%            and (Y =< (Node#node.y+Node#node.size))).
 
-within_node2(Node,Point) ->
+within_node(Node,Point) ->
     within(Point,corners({Node#node.x,Node#node.y,Node#node.size})).
 
 within({X,Y},[{X1,Y1},{X2,Y2},_,_]) ->
-    ((X1 =< X) and (X =< X2))
+    ((X1 < X) and (X =< X2))
         and
-          ((Y1 =< Y) and (Y =< Y2)).
+          ((Y1 < Y) and (Y =< Y2)).
 
 corners({X,Y,Size}) ->
     [{X-Size,Y-Size},
@@ -240,9 +278,51 @@ intersects_node(Node1,Node2) ->
           fun(Point) -> within(Point,C2) end,
           C1).
 
-neighbours(Node,Leaf) ->
+eq_node(Node1,Node2) ->
+    (((Node1#node.x == Node2#node.x)
+      and (Node1#node.y == Node2#node.y))
+     and (Node1#node.size == Node2#node.size)).
+
+
+neighbours_old(Node,Leaf) ->
     neighbours_rec(Node,
-                   Leaf#node{ size = Leaf#node.size + ?MINSIZE/2 }).
+                   %% Leaf#node{ size = Leaf#node.size - ?MINSIZE/2 }).
+                   Leaf#node{ size = Leaf#node.size }).
+
+neighbours(Node,Leaf) ->
+    lists:filter(
+      %% fun(ChildNode) -> not eq_node(Leaf,ChildNode) end,
+      fun(ChildNode) ->
+              Res = not lists:all(
+                    fun(Point) -> within_node(Leaf,Point) end,
+                    corners(
+                      {ChildNode#node.x,
+                       ChildNode#node.y,
+                       ChildNode#node.size - ?MINSIZE/2})),
+              ?LOG({"neighbours: within",Res}),
+              Res
+      end,
+      neighbours_rec(Node,
+                     Leaf#node{
+                       x = Leaf#node.x + ?MINSIZE/2,
+                       size = Leaf#node.size - ?MINSIZE/4
+                      }) ++
+      neighbours_rec(Node,
+                     Leaf#node{
+                       x = Leaf#node.x - ?MINSIZE/2,
+                       size = Leaf#node.size - ?MINSIZE/4
+                      }) ++
+      neighbours_rec(Node,
+                     Leaf#node{
+                       y = Leaf#node.y + ?MINSIZE/2,
+                       size = Leaf#node.size - ?MINSIZE/4
+                      }) ++
+      neighbours_rec(Node,
+                     Leaf#node{
+                       y = Leaf#node.y - ?MINSIZE/2,
+                       size = Leaf#node.size - ?MINSIZE/4
+                      })).
+
 
 neighbours_rec(Node,Leaf) ->
     io:format("neighbours: ~p ~p~n", [string:copies(" ",50-trunc(2*Node#node.size)),{Node#node.x,Node#node.y}]),
