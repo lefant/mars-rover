@@ -10,7 +10,7 @@
 %% -endif.
 -define(LOG(Msg), io:format("{~p:~p}: ~p~n", [?MODULE, ?LINE, Msg])).
 
--define(MINSIZE, 0.1).
+-define(MINSIZE, 0.5).
 
 -record(node, {
           x,
@@ -32,12 +32,21 @@ test() ->
 %%%     dbg:tpl(quadtree, corners, 1, []),
 %%%     dbg:tpl(quadtree, intersects_circle, 2, []),
 
+    {A,B,C} = erlang:now(),
+    random:seed(A,B,C),
 
-    ListOfCircles = [
-                     {-10,-5,3},
-                     {3,-4,2},
-                     {17,13,5}
-                     ],
+    %% ListOfCircles = [
+    %%                  {-10,-5,3},
+    %%                  {3,-4,2},
+    %%                  {17,13,5}
+    %%                  ],
+    ListOfCircles =
+        lists:map(
+          fun(_) ->
+                  {random:uniform(40)-20,random:uniform(40)-20,random:uniform(5)}
+          end,
+          [1,1,1,1,1]),
+
     QuadTree = #node{
       x=0,
       y=0,
@@ -107,14 +116,25 @@ test() ->
     %%   fun(Node) -> visualize(Node,yellow) end,
     %%   neighbours(Tree,MyNode)),
 
-    lists:map(
-      fun(Node) -> visualize(Node,orange) end,
-      astar(Tree,{-9,-9},{9,9})),
+    Start = random_point(),
+    Goal = random_point(),
+
+    Way = astar(Tree,Start,Goal),
+    if
+        Way == failure -> ok;
+        true ->
+            lists:map(
+              fun(Node) -> visualize(Node,yellow) end,
+             Way)
+    end,
+    visualize(find_node(Tree,Start),blue),
+    visualize(find_node(Tree,Goal),orange),
+
     ok.
 
 
-%% {A,B,C} = erlang:now(),
-%% random:seed(A,B,C),
+random_point() ->
+    {random:uniform(40)-20,random:uniform(40)-20}.
 
 
 astar(Tree,StartPoint,GoalPoint) ->
