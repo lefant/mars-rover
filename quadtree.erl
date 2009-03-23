@@ -10,7 +10,7 @@
 %% -endif.
 -define(LOG(Msg), io:format("{~p:~p}: ~p~n", [?MODULE, ?LINE, Msg])).
 
--define(MINSIZE, 1).
+-define(MINSIZE, 3).
 
 -record(node, {
           x,
@@ -25,11 +25,13 @@ test() ->
     dbg:tracer(),
     dbg:p(all, call),
 %%%     dbg:tpl(quadtree, within, 2, []),
-%%%     dbg:tpl(quadtree, within_node, 2, []),
+%%%     dbg:tpl(quadtree, within_circle, 2, []),
 %%%     dbg:tpl(quadtree, within_node, 2, []),
 %%%     dbg:tpl(quadtree, intersects_node, 2, []),
 %%%     dbg:tpl(quadtree, within, 2, []),
 %%%     dbg:tpl(quadtree, corners, 1, []),
+%%%     dbg:tpl(quadtree, intersects_circle, 2, []),
+
 
     ListOfCircles = [
                      {-10,-5,3},
@@ -56,7 +58,6 @@ test() ->
     false = intersects_circle(QuadTree,{0,100,1}),
     false = intersects_circle(QuadTree,{-100,0,1}),
     false = intersects_circle(QuadTree,{0,-100,1}),
-
 
     true = intersects_circle(QuadTree,{0,0,10}),
 
@@ -101,7 +102,7 @@ test() ->
     %% visualize(Tree),
 
     visualize(Tree),
-    visualize(MyNode,red),
+    visualize(MyNode,blue),
     lists:map(
       fun(Node) -> visualize(Node,yellow) end,
       neighbours(Tree,MyNode)),
@@ -129,8 +130,10 @@ insert_circle(Node,Circle) ->
                                  Node#node.children)};
                 true ->
 %%                    ?LOG({"insert_circle: leafnode"}),
-                    if 
-                        Node#node.size > ?MINSIZE ->
+                    N = node_within_circle(Node,Circle),
+                    if
+                        (Node#node.size > ?MINSIZE)
+                        and not N ->
 %%                            ?LOG("insert_circle: create children, recurse"),
                             Node#node{
                               children=lists:map(
@@ -201,7 +204,7 @@ visualize(Node,Color) ->
 draw(Node,Color1) ->
     [{X1,Y1},{X2,Y2},_,_] = corners({Node#node.x,Node#node.y,Node#node.size}),
     case Node#node.status of
-        obstacle -> Color = black;
+        obstacle -> Color = red;
         empty -> Color = Color1
     end,
     gs:create(rectangle,can1,
@@ -262,6 +265,11 @@ within({X,Y},[{X1,Y1},{X2,Y2},_,_]) ->
         and
           ((Y1 < Y) and (Y =< Y2)).
 
+node_corners(Node) ->
+    corners({Node#node.x,
+             Node#node.y,
+             Node#node.size}).
+
 corners({X,Y,Size}) ->
     [{X-Size,Y-Size},
      {X+Size,Y+Size},
@@ -277,6 +285,15 @@ intersects_node(Node1,Node2) ->
         lists:any(
           fun(Point) -> within(Point,C2) end,
           C1).
+
+node_within_circle(Node,Circle) ->
+    lists:all(
+      fun(Point) -> within_circle(Circle,Point) end,
+      node_corners(Node)).
+
+within_circle({X,Y,R},{Xp,Yp}) ->
+    sqr(X-Xp) + sqr(Y-Yp) =< sqr(R).
+
 
 eq_node(Node1,Node2) ->
     (((Node1#node.x == Node2#node.x)
@@ -344,7 +361,10 @@ neighbours_rec(Node,Leaf) ->
                         Node#node.children));
                 true ->
                     ?LOG({"neighbours: leafnode"}),
-                    [Node]
+                    if
+                        Node#node.status == empty -> [Node];
+                        true -> []
+                    end
             end;
         true -> []
     end.
