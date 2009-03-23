@@ -10,7 +10,7 @@
 %% -endif.
 -define(LOG(Msg), io:format("{~p:~p}: ~p~n", [?MODULE, ?LINE, Msg])).
 
--define(MINSIZE, 0.5).
+-define(MINSIZE, 2).
 
 -record(node, {
           x,
@@ -106,7 +106,7 @@ test() ->
               [{x,0},{y, 0},{width,1000},{height,1000},
                {default,rectangle,{fill,black}},
                {default,oval,{fill,green}}]),
-    %% gs:create(rectangle,can1,[{coords,[{100,100},{200,200}]}]),
+
 
     visualize(Tree),
 
@@ -127,14 +127,19 @@ test() ->
               fun(Node) -> visualize(Node,yellow) end,
              Way)
     end,
-    visualize(find_node(Tree,Start),blue),
-    visualize(find_node(Tree,Goal),orange),
+
+    draw_oval(Start,blue),
+    draw_oval(Goal,orange),
 
     ok.
 
 
 random_point() ->
     {random:uniform(40)-20,random:uniform(40)-20}.
+draw_oval({X,Y},Color) ->
+    gs:create(oval,can1,[{coords,[{stretch(X)-5,stretch(Y)-5},
+                                  {stretch(X)+5,stretch(Y)+5}]},
+                         {fill,Color}]).
 
 
 astar(Tree,StartPoint,GoalPoint) ->
@@ -394,10 +399,13 @@ within_circle({X,Y,R},Point) ->
     dist2({X,Y},Point) =< sqr(R).
 
 min_dist2(Node,Point) ->
-    lists:min(
-      lists:map(
-        fun(NPoint) -> dist2(Point,NPoint) end,
-        node_corners(Node))).
+    dist2(
+      {Node#node.x,Node#node.y},
+      Point).
+    %% lists:min(
+    %%   lists:map(
+    %%     fun(NPoint) -> dist2(Point,NPoint) end,
+    %%     node_corners(Node))).
 
 dist2({X1,Y1},{X2,Y2}) ->
     sqr(X1-X2) + sqr(Y1-Y2).
