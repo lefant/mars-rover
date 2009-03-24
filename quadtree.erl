@@ -10,7 +10,7 @@
 %% -endif.
 -define(LOG(Msg), io:format("{~p:~p}: ~p~n", [?MODULE, ?LINE, Msg])).
 
--define(MINSIZE, 2).
+-define(MINSIZE, 1).
 
 -record(node, {
           x,
@@ -24,6 +24,7 @@ test() ->
     ?LOG("Debug is enabled"),
     dbg:tracer(),
     dbg:p(all, call),
+
 %%%     dbg:tpl(quadtree, astar, 5, []),
 %%%     dbg:tpl(quadtree, within_circle, 2, []),
 %%%     dbg:tpl(quadtree, within_node, 2, []),
@@ -43,9 +44,9 @@ test() ->
     ListOfCircles =
         lists:map(
           fun(_) ->
-                  {random:uniform(40)-20,random:uniform(40)-20,random:uniform(5)}
+                  {random:uniform(40)-20,random:uniform(40)-20,random:uniform(3)}
           end,
-          [1,1,1,1,1]),
+          [1,1,1,1,1,1,1,1,1,1,1]),
 
     QuadTree = #node{
       x=0,
@@ -194,7 +195,7 @@ astar(Tree,GoalPoint,GoalNode,Closed,[{Node,CostSoFar,PathSoFar}|Open]) ->
                                           replace_node(
                                             {OpenNode,NewCost,[Node|PathSoFar]},
                                             Open1);
-                                      true ->
+                                       true ->
                                           Open1
                                   end
                           end
@@ -414,7 +415,13 @@ node_dist2(Node1,Node2) ->
     dist2({Node1#node.x,Node1#node.y},
           {Node2#node.x,Node2#node.y}).
 
-eq_node(Node1,Node2) ->
+
+eq_node(#node{x=X,y=Y},#node{x=X,y=Y}) ->
+    true;
+eq_node(_,_) ->
+    false.
+
+old_eq_node(Node1,Node2) ->
     (((Node1#node.x == Node2#node.x)
       and (Node1#node.y == Node2#node.y))
      and (Node1#node.size == Node2#node.size)).
