@@ -10,7 +10,7 @@
 %% -endif.
 -define(LOG(Msg), io:format("{~p:~p}: ~p~n", [?MODULE, ?LINE, Msg])).
 
--define(MINSIZE, 1).
+-define(MINSIZE, 3).
 
 -record(node, {
           x,
@@ -19,6 +19,8 @@
           children=undefined,
           status=empty
 }).
+
+
 
 test() ->
     ?LOG("Debug is enabled"),
@@ -36,54 +38,20 @@ test() ->
     {A,B,C} = erlang:now(),
     random:seed(A,B,C),
 
-    %% ListOfCircles = [
-    %%                  {-10,-5,3},
-    %%                  {3,-4,2},
-    %%                  {17,13,5}
-    %%                  ],
     ListOfCircles =
         lists:map(
           fun(_) ->
-                  {random:uniform(40)-20,random:uniform(40)-20,random:uniform(3)}
+                  {X,Y} = random_point(),
+                  {X,Y,random:uniform(30)}
           end,
-          [1,1,1,1,1,1,1,1,1,1,1]),
+          [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]),
+
 
     QuadTree = #node{
       x=0,
       y=0,
-      size=20
+      size=200
      },
-
-    false = intersects_circle(QuadTree,{100,100,1}),
-    false = intersects_circle(QuadTree,{-100,-100,1}),
-    false = intersects_circle(QuadTree,{100,-100,1}),
-    false = intersects_circle(QuadTree,{-100,100,1}),
-
-    false = intersects_circle(QuadTree,{100,100,85}),
-    false = intersects_circle(QuadTree,{-100,100,85}),
-    false = intersects_circle(QuadTree,{100,-100,85}),
-    false = intersects_circle(QuadTree,{-100,-100,85}),
-
-    false = intersects_circle(QuadTree,{100,0,1}),
-    false = intersects_circle(QuadTree,{0,100,1}),
-    false = intersects_circle(QuadTree,{-100,0,1}),
-    false = intersects_circle(QuadTree,{0,-100,1}),
-
-    true = intersects_circle(QuadTree,{0,0,10}),
-
-    true = intersects_circle(QuadTree,{25,0,10}),
-    true = intersects_circle(QuadTree,{-25,0,10}),
-    true = intersects_circle(QuadTree,{0,25,10}),
-    true = intersects_circle(QuadTree,{0,-25,10}),
-
-    true = intersects_circle(QuadTree,{25,25,10}),
-    true = intersects_circle(QuadTree,{-25,25,10}),
-    true = intersects_circle(QuadTree,{25,-25,10}),
-    true = intersects_circle(QuadTree,{-25,-25,10}),
-
-    true = intersects_node(
-             #node{x=0,y=0,size=10},
-             #node{x=19,y=19,size=10}),
 
     Tree = lists:foldl(
         fun(Circle,Node)
@@ -92,12 +60,7 @@ test() ->
         QuadTree,
         ListOfCircles),
 
-%%%     walk_tree(Tree),
-    MyNode = find_node(Tree,{9,9}),
-    find_parent(Tree,MyNode),
-    neighbours(Tree,MyNode),
 
-    %% gs:create(rectangle,can1,[{coords,[{100,100},{200,200}]}]),
 
     I=gs:start(),
     Win=gs:create(window, I,
@@ -109,13 +72,8 @@ test() ->
                {default,oval,{fill,green}}]),
 
 
-    visualize(Tree),
 
-    %% visualize(Tree),
-    %% visualize(MyNode,blue),
-    %% lists:map(
-    %%   fun(Node) -> visualize(Node,yellow) end,
-    %%   neighbours(Tree,MyNode)),
+    visualize(Tree),
 
     Start = random_point(),
     Goal = random_point(),
@@ -136,24 +94,20 @@ test() ->
 
 
 random_point() ->
-    {random:uniform(40)-20,random:uniform(40)-20}.
-draw_oval({X,Y},Color) ->
-    gs:create(oval,can1,[{coords,[{stretch(X)-5,stretch(Y)-5},
-                                  {stretch(X)+5,stretch(Y)+5}]},
-                         {fill,Color}]).
+    {random:uniform(400)-200,random:uniform(400)-200}.
+
+stretch(X) ->
+    (X+200).
+
+
+
+
 
 
 astar(Tree,StartPoint,GoalPoint) ->
     StartNode = find_node(Tree,StartPoint),
     GoalNode = find_node(Tree,GoalPoint),
     astar(Tree,GoalPoint,GoalNode,[],[{StartNode,0,[]}]).
-astar_sort(Tree,GoalPoint,GoalNode,Closed,Open) ->
-    SortedOpen = lists:sort(
-      fun({Node1,_,_},{Node2,_,_}) ->
-              min_dist2(Node1,GoalPoint) < min_dist2(Node2,GoalPoint)
-      end,
-      Open),
-    astar(Tree,GoalPoint,GoalNode,Closed,SortedOpen).
 astar(_,_,_,_,[]) ->
     failure;
 astar(Tree,GoalPoint,GoalNode,Closed,[{Node,CostSoFar,PathSoFar}|Open]) ->
@@ -202,22 +156,22 @@ astar(Tree,GoalPoint,GoalNode,Closed,[{Node,CostSoFar,PathSoFar}|Open]) ->
                   end,
                   Open,
                   OpenNeighbours),
-            astar_sort(Tree,GoalPoint,GoalNode,[Node|Closed],NewOpen)
+
+            SortedOpen =
+                lists:sort(
+                  fun({Node1,_,_},{Node2,_,_}) ->
+                          min_dist2(Node1,GoalPoint) < min_dist2(Node2,GoalPoint)
+                  end,
+                  NewOpen),
+
+            astar(Tree,GoalPoint,GoalNode,[Node|Closed],SortedOpen)
     end.
             
 
-replace_node(Item,List) ->
-    replace_node(Item,List,[]).
-replace_node(_,[],Res) ->
-    Res;
-replace_node(Item,[H|List],Res) ->
-    {NewNode,_,_} = Item,
-    {OldNode,_,_} = H,
-    E = eq_node(NewNode,OldNode),
-    if
-        E -> replace_node(Item,List,[Item|Res]);
-        true -> replace_node(Item,List,[H|Res])
-    end.
+
+
+
+
 
 
 insert_circle(Node,Circle) ->
@@ -293,34 +247,9 @@ walk_tree(Node) ->
             io:format("~p ~p~n", [string:copies(" ",50-trunc(2*Node#node.size)),{Node#node.x,Node#node.y}])
     end.
 
-visualize(Node) ->
-    visualize(Node,green).
-visualize(Node,Color) ->
-    if
-        is_list(Node#node.children) ->
-            lists:map(
-              fun(ChildNode) ->
-                      visualize(ChildNode)
-              end,
-              Node#node.children);
-        true ->
-            draw(Node,Color)
-    end.
 
-draw(Node,Color1) ->
-    [{X1,Y1},{X2,Y2},_,_] = corners({Node#node.x,Node#node.y,Node#node.size}),
-    case Node#node.status of
-        obstacle -> Color = red;
-        empty -> Color = Color1
-    end,
-    gs:create(rectangle,can1,
-              [{coords,
-                [{stretch(X1),stretch(Y1)},
-                 {stretch(X2),stretch(Y2)}]},
-               {fill,Color}]).
 
-stretch(X) ->
-    (X+20)*10.
+
 
 find_node(Node,{X,Y}) ->
     %% io:format("find_node: ~p ~p~n", [string:copies(" ",50-trunc(2*Node#node.size)),{Node#node.x,Node#node.y}]),
@@ -355,82 +284,6 @@ find_parent(Node,Leaf) ->
     end.
 
 
-%% within_node(Node,{X,Y}) ->
-%%     (((Node#node.x-Node#node.size) < X)
-%%      and (X =< (Node#node.x+Node#node.size)))
-%%         and
-%%           (((Node#node.y-Node#node.size) < Y)
-%%            and (Y =< (Node#node.y+Node#node.size))).
-
-within_node(Node,Point) ->
-    within(Point,corners({Node#node.x,Node#node.y,Node#node.size})).
-
-within({X,Y},[{X1,Y1},{X2,Y2},_,_]) ->
-    ((X1 < X) and (X =< X2))
-        and
-          ((Y1 < Y) and (Y =< Y2)).
-
-node_corners(Node) ->
-    corners({Node#node.x,
-             Node#node.y,
-             Node#node.size}).
-
-corners({X,Y,Size}) ->
-    [{X-Size,Y-Size},
-     {X+Size,Y+Size},
-     {X+Size,Y-Size},
-     {X-Size,Y+Size}].
-
-intersects_node(Node1,Node2) ->
-    C1 = corners({Node1#node.x,Node1#node.y,Node1#node.size}),
-    C2 = corners({Node2#node.x,Node2#node.y,Node2#node.size}),
-    lists:any(
-      fun(Point) -> within(Point,C1) end,
-      C2) or
-        lists:any(
-          fun(Point) -> within(Point,C2) end,
-          C1).
-
-node_within_circle(Node,Circle) ->
-    lists:all(
-      fun(Point) -> within_circle(Circle,Point) end,
-      node_corners(Node)).
-
-within_circle({X,Y,R},Point) ->
-    dist2({X,Y},Point) =< sqr(R).
-
-min_dist2(Node,Point) ->
-    dist2(
-      {Node#node.x,Node#node.y},
-      Point).
-    %% lists:min(
-    %%   lists:map(
-    %%     fun(NPoint) -> dist2(Point,NPoint) end,
-    %%     node_corners(Node))).
-
-dist2({X1,Y1},{X2,Y2}) ->
-    sqr(X1-X2) + sqr(Y1-Y2).
-
-node_dist2(Node1,Node2) ->
-    dist2({Node1#node.x,Node1#node.y},
-          {Node2#node.x,Node2#node.y}).
-
-
-eq_node(#node{x=X,y=Y},#node{x=X,y=Y}) ->
-    true;
-eq_node(_,_) ->
-    false.
-
-old_eq_node(Node1,Node2) ->
-    (((Node1#node.x == Node2#node.x)
-      and (Node1#node.y == Node2#node.y))
-     and (Node1#node.size == Node2#node.size)).
-
-
-neighbours_old(Node,Leaf) ->
-    neighbours_rec(Node,
-                   %% Leaf#node{ size = Leaf#node.size - ?MINSIZE/2 }).
-                   Leaf#node{ size = Leaf#node.size }).
 
 neighbours(Node,Leaf) ->
     lists:filter(
@@ -495,6 +348,143 @@ neighbours_rec(Node,Leaf) ->
     end.
 
 
+
+
+
+
+
+
+
+
+
+visualize(Node) ->
+    visualize(Node,green).
+visualize(Node,Color) ->
+    if
+        is_list(Node#node.children) ->
+            lists:map(
+              fun(ChildNode) ->
+                      visualize(ChildNode)
+              end,
+              Node#node.children);
+        true ->
+            draw(Node,Color)
+    end.
+
+draw(Node,Color1) ->
+    [{X1,Y1},{X2,Y2},_,_] = corners({Node#node.x,Node#node.y,Node#node.size}),
+    case Node#node.status of
+        obstacle -> Color = red;
+        empty -> Color = Color1
+    end,
+    gs:create(rectangle,can1,
+              [{coords,
+                [{stretch(X1),stretch(Y1)},
+                 {stretch(X2),stretch(Y2)}]},
+               {fill,Color}]).
+draw_oval({X,Y},Color) ->
+    gs:create(oval,can1,[{coords,[{stretch(X)-5,stretch(Y)-5},
+                                  {stretch(X)+5,stretch(Y)+5}]},
+                         {fill,Color}]).
+
+
+
+
+
+
+
+
+
+
+replace_node(Item,List) ->
+    replace_node(Item,List,[]).
+replace_node(_,[],Res) ->
+    Res;
+replace_node(Item,[H|List],Res) ->
+    {NewNode,_,_} = Item,
+    {OldNode,_,_} = H,
+    E = eq_node(NewNode,OldNode),
+    if
+        E -> replace_node(Item,List,[Item|Res]);
+        true -> replace_node(Item,List,[H|Res])
+    end.
+
+
+within_node(Node,Point) ->
+    within(Point,corners({Node#node.x,Node#node.y,Node#node.size})).
+
+within({X,Y},[{X1,Y1},{X2,Y2},_,_]) ->
+    ((X1 < X) and (X =< X2))
+        and
+          ((Y1 < Y) and (Y =< Y2)).
+
+node_corners(Node) ->
+    corners({Node#node.x,
+             Node#node.y,
+             Node#node.size}).
+
+corners({X,Y,Size}) ->
+    [{X-Size,Y-Size},
+     {X+Size,Y+Size},
+     {X+Size,Y-Size},
+     {X-Size,Y+Size}].
+
+intersects_node(Node1,Node2) ->
+    C1 = corners({Node1#node.x,Node1#node.y,Node1#node.size}),
+    C2 = corners({Node2#node.x,Node2#node.y,Node2#node.size}),
+    lists:any(
+      fun(Point) -> within(Point,C1) end,
+      C2) or
+        lists:any(
+          fun(Point) -> within(Point,C2) end,
+          C1).
+
+node_within_circle(Node,Circle) ->
+    lists:all(
+      fun(Point) -> within_circle(Circle,Point) end,
+      node_corners(Node)).
+
+within_circle({X,Y,R},Point) ->
+    dist2({X,Y},Point) =< sqr(R).
+
+min_dist2(Node,Point) ->
+    dist2(
+      {Node#node.x,Node#node.y},
+      Point).
+    %% lists:min(
+    %%   lists:map(
+    %%     fun(NPoint) -> dist2(Point,NPoint) end,
+    %%     node_corners(Node))).
+
+dist2({X1,Y1},{X2,Y2}) ->
+    sqr(X1-X2) + sqr(Y1-Y2).
+
+node_dist2(Node1,Node2) ->
+    dist2({Node1#node.x,Node1#node.y},
+          {Node2#node.x,Node2#node.y}).
+
+
+eq_node(#node{x=X,y=Y},#node{x=X,y=Y}) ->
+    true;
+eq_node(_,_) ->
+    false.
+
+
+
+
+sqr(X) ->
+    X*X.
+
+
+
+
+
+
+
+
+
+
+
 intersects_circle(Node,{X,Y,R}) ->
     NodeXmax = Node#node.x+Node#node.size,
     NodeXmin = Node#node.x-Node#node.size,
@@ -556,5 +546,43 @@ intersects_circle(Node,{X,Y,R}) ->
         true -> false
     end.
 
-sqr(X) ->
-    X*X.
+
+test_intersects() ->
+    QuadTree = #node{
+      x=0,
+      y=0,
+      size=20
+     },
+
+    false = intersects_circle(QuadTree,{100,100,1}),
+    false = intersects_circle(QuadTree,{-100,-100,1}),
+    false = intersects_circle(QuadTree,{100,-100,1}),
+    false = intersects_circle(QuadTree,{-100,100,1}),
+
+    false = intersects_circle(QuadTree,{100,100,85}),
+    false = intersects_circle(QuadTree,{-100,100,85}),
+    false = intersects_circle(QuadTree,{100,-100,85}),
+    false = intersects_circle(QuadTree,{-100,-100,85}),
+
+    false = intersects_circle(QuadTree,{100,0,1}),
+    false = intersects_circle(QuadTree,{0,100,1}),
+    false = intersects_circle(QuadTree,{-100,0,1}),
+    false = intersects_circle(QuadTree,{0,-100,1}),
+
+    true = intersects_circle(QuadTree,{0,0,10}),
+
+    true = intersects_circle(QuadTree,{25,0,10}),
+    true = intersects_circle(QuadTree,{-25,0,10}),
+    true = intersects_circle(QuadTree,{0,25,10}),
+    true = intersects_circle(QuadTree,{0,-25,10}),
+
+    true = intersects_circle(QuadTree,{25,25,10}),
+    true = intersects_circle(QuadTree,{-25,25,10}),
+    true = intersects_circle(QuadTree,{25,-25,10}),
+    true = intersects_circle(QuadTree,{-25,-25,10}),
+
+    true = intersects_node(
+             #node{x=0,y=0,size=10},
+             #node{x=19,y=19,size=10}),
+    ok.
+
