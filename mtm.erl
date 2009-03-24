@@ -68,8 +68,11 @@ test_pov(X,Y,E) ->
     {trunc(X1),trunc(Y1)}.
 
 
+
+
 run() ->
     connect_simulator(localhost,17676).
+
 
 
 connect_simulator(Host,Port) ->
@@ -78,8 +81,14 @@ connect_simulator(Host,Port) ->
                                     {packet, 0},
                                     {nodelay, true}]),
     ?LOG("connection to simulator successfully established"),
-    World=#world{},
-    receive_loop(Socket,World).
+    receive
+        {tcp,Socket,Bin} ->
+            {ok, Msg} = regexp:split(binary_to_list(Bin)," "),
+            World1 = parse_init_message(#world{},Msg),
+            receive_loop(Socket,World1);
+        {tcp_closed,Socket} ->
+            ok
+    end.
 
 receive_loop(Socket,World) ->
     receive
@@ -306,6 +315,19 @@ correct_accel(Cur,Goal) ->
     end.
 
 
+parse_init_message(World,["I"|List]) ->
+    %% I dx dy time-limit min-sensor max-sensor max-speed max-turn max-hard-turn ;
+    [Width,Height,TimeLimit,MinSensor,MaxSensor,MaxSpeed,MaxTurn,MaxHardTurn,_] = List,
+    World#world{
+      width=str2num(Width),
+      height=str2num(Height),
+      timelimit=str2num(TimeLimit),
+      minsensor=str2num(MinSensor),
+      maxsensor=str2num(MaxSensor),
+      maxspeed=str2num(MaxSpeed),
+      maxturn=str2num(MaxTurn),
+      maxhardturn=str2num(MaxHardTurn)
+     }.
 
 parse_message(World,["T"|List]) ->
     %% T time-stamp vehicle-ctl vehicle-x vehicle-y vehicle-dir vehicle-speed objects ;
@@ -320,19 +342,6 @@ parse_message(World,["T"|List]) ->
               },
     parse_object_list(World1,ObjectList);
 
-parse_message(World,["I"|List]) ->
-    %% I dx dy time-limit min-sensor max-sensor max-speed max-turn max-hard-turn ;
-    [Width,Height,TimeLimit,MinSensor,MaxSensor,MaxSpeed,MaxTurn,MaxHardTurn,_] = List,
-    World#world{
-      width=str2num(Width),
-      height=str2num(Height),
-      timelimit=str2num(TimeLimit),
-      minsensor=str2num(MinSensor),
-      maxsensor=str2num(MaxSensor),
-      maxspeed=str2num(MaxSpeed),
-      maxturn=str2num(MaxTurn),
-      maxhardturn=str2num(MaxHardTurn)
-     };
 parse_message(World,["E",Time,Score,";"]) ->
     io:format("EVENT: end of round: time: ~p score: ~p~n",[Time,Score]),
     World;
@@ -345,15 +354,17 @@ parse_message(World,["B",Time,";"]) ->
     World;
 parse_message(World,["C",Time,";"]) ->
     io:format("EVENT: Crater crash: ~p~n",[Time]),
-%%%     World;
     throw({crater_crash,World});
 parse_message(World,["K",Time,";"]) ->
     io:format("EVENT: Killed by Martian!: ~p~n",[Time]),
     World;
 parse_message(World,[Event,Time,";"]) ->
     io:format("EVENT: unknown!!! time: ~p kind of event: ~p~n",[Time,Event]),
-%%    World.
-    throw({unknown_event,World}).
+    throw({unknown_event,World});
+parse_message(World,Msg) ->
+    io:format("unknown message: ~p~n",[Msg]),
+    World.
+    %% throw({unknown_msg,World,Msg}).
 
 
 parse_object_list(World,[";"]) ->

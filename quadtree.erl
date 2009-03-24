@@ -65,15 +65,15 @@ test() ->
     Start = random_point(),
     Goal = random_point(),
 
-    Way = astar(Tree,Start,Goal),
+    Path = astar(Tree,Start,Goal),
 
     visualize_init(),
     visualize(Tree,green),
 
     if
-        Way == failure -> ok;
+        Path == failure -> ok;
         true ->
-            visualize(Way,yellow)
+            visualize(Path,yellow)
     end,
 
     draw_oval(Start,blue),
@@ -195,29 +195,6 @@ insert_circle(Node,Circle) ->
         true -> Node
     end.
 
-new_children(Node) ->
-    NewSize = Node#node.size/2,
-    [
-     #node{
-      x=Node#node.x+NewSize,
-      y=Node#node.y+NewSize,
-      size=NewSize
-     },
-                #node{
-      x=Node#node.x+NewSize,
-      y=Node#node.y-NewSize,
-      size=NewSize
-     },
-                #node{
-      x=Node#node.x-NewSize,
-      y=Node#node.y+NewSize,
-      size=NewSize
-     },
-                #node{
-      x=Node#node.x-NewSize,
-      y=Node#node.y-NewSize,
-      size=NewSize
-     }].
 
 walk_tree(Node) ->
     if
@@ -231,10 +208,6 @@ walk_tree(Node) ->
         true ->
             io:format("~p ~p~n", [string:copies(" ",50-trunc(2*Node#node.size)),{Node#node.x,Node#node.y}])
     end.
-
-
-
-
 
 find_node(Node,{X,Y}) ->
     %% io:format("find_node: ~p ~p~n", [string:copies(" ",50-trunc(2*Node#node.size)),{Node#node.x,Node#node.y}]),
@@ -332,6 +305,29 @@ neighbours_rec(Node,Leaf) ->
         true -> []
     end.
 
+new_children(Node) ->
+    NewSize = Node#node.size/2,
+    [
+     #node{
+      x=Node#node.x+NewSize,
+      y=Node#node.y+NewSize,
+      size=NewSize
+     },
+     #node{
+      x=Node#node.x+NewSize,
+      y=Node#node.y-NewSize,
+      size=NewSize
+     },
+                #node{
+      x=Node#node.x-NewSize,
+      y=Node#node.y+NewSize,
+      size=NewSize
+     },
+                #node{
+      x=Node#node.x-NewSize,
+      y=Node#node.y-NewSize,
+      size=NewSize
+     }].
 
 
 
@@ -520,17 +516,6 @@ intersects_circle(Node,{X,Y,R}) ->
     %% center of circle above of lower horizontal boundary
     Sc = (NodeYmin =< Y),
     WithinVertically = Nc and Sc,
-
-%%%     ?LOG({"intersects: ",
-%%%           WithinHorizontally,
-%%%           WithinVertically,
-%%%           CloseVertically,
-%%%           CloseHorizontally,
-%%%           NodeXmax,
-%%%           NodeXmin,
-%%%           NodeYmax,
-%%%           NodeYmin,
-%%%           ok}),
 
     if
         WithinHorizontally and WithinVertically -> true;
