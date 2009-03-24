@@ -59,12 +59,14 @@ test() ->
     Path = astar(Tree,Start,Goal),
 
     visualize_init(),
-    visualize(Tree,green),
+    visualize(Tree,white),
 
     if
         Path == failure -> ok;
         true ->
-            visualize(Path,yellow)
+            SubGoal = next_subgoal(Path),
+            visualize(Path,yellow),
+            draw_oval(SubGoal,green)
     end,
 
     draw_oval(Start,blue),
@@ -81,6 +83,26 @@ transform({X,Y}) ->
     {(X+200),
      (-Y+200)}.
 
+next_subgoal([GoalNode]) ->
+    {GoalNode#node.x,GoalNode#node.y};
+next_subgoal([CurNode,NextNode|_]) ->
+    {NextNode#node.x,NextNode#node.y}.
+    %% C1 = node_corners(CurNode),
+    %% C2 = node_corners(NextNode),
+    %% [P1,P2] =
+    %%     lists:usort(
+    %%       fun(A,B) -> A /= B end,
+    %%       lists:filter(
+    %%         fun(Point) -> within(Point,C1) end,
+    %%         C2) ++
+    %%       lists:filter(
+    %%         fun(Point) -> within(Point,C2) end,
+    %%         C1)),
+    %% {X1,Y1} = P1,
+    %% {X2,Y2} = P2,
+    %% {(X1+X2)/2,(Y1+Y2)/2}.
+
+
 
 
 astar(Tree,StartPoint,GoalPoint) ->
@@ -92,7 +114,7 @@ astar(_,_,_,_,[]) ->
 astar(Tree,GoalPoint,GoalNode,Closed,[{Node,CostSoFar,PathSoFar}|Open]) ->
     IsGoalReached = eq_node(Node,GoalNode),
     if
-        IsGoalReached -> [Node|PathSoFar];
+        IsGoalReached -> lists:reverse([Node|PathSoFar]);
         true ->
             OpenNeighbours =
                 lists:filter(

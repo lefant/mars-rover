@@ -62,7 +62,7 @@ receive_loop(Socket,World) ->
     end.
 
 init_new_round(World) ->
-    quadtree:visualize(World#world.quadtree,green),
+    quadtree:visualize(World#world.quadtree,white),
     World.
 
 
@@ -408,10 +408,18 @@ parse_object_list(World,[Type,X1,Y1,R1|Rest]) ->
                         quadtree:insert_circle(
                           World#world.quadtree,
                           {X,Y,R}),
+                    Path = quadtree:astar(
+                      QuadTree,
+                      {World#world.x,World#world.y},
+                      {0,0}),
+                    Goal = quadtree:next_subgoal(Path),
+                    quadtree:visualize(Path,yellow),
+                    quadtree:draw_oval(Goal,green),
                     parse_object_list(
                       World#world{
                         boulders=[{X,Y,R}|World#world.boulders],
-                        quadtree=QuadTree
+                        quadtree=QuadTree,
+                        path=Path
                        },Rest)
             end;
         "c" ->

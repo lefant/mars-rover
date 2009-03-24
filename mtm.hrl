@@ -20,5 +20,6 @@
           dir = 50,
           speed = 0,
 
+          path=[],
           quadtree
          }).
