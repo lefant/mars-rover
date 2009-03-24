@@ -10,7 +10,7 @@
 %% -endif.
 -define(LOG(Msg), io:format("{~p:~p}: ~p~n", [?MODULE, ?LINE, Msg])).
 
--define(MINSIZE, 3).
+-define(MINSIZE, 5).
 
 -record(node, {
           x,
@@ -44,8 +44,7 @@ test() ->
                   {X,Y} = random_point(),
                   {X,Y,random:uniform(30)}
           end,
-          [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]),
-
+          string:left("",50)),
 
     QuadTree = #node{
       x=0,
@@ -178,10 +177,8 @@ insert_circle(Node,Circle) ->
     I = intersects_circle(Node,Circle),
     if
         I ->
-%%            ?LOG({"insert_circle: intersection ",Node,Circle}),
             if
                 is_list( Node#node.children ) ->
-%%                    ?LOG("insert_circle: children found, recurse"),
                     Node#node{
                       children=lists:map(
                                  fun(ChildNode) ->
@@ -189,12 +186,11 @@ insert_circle(Node,Circle) ->
                                  end,
                                  Node#node.children)};
                 true ->
-%%                    ?LOG({"insert_circle: leafnode"}),
                     N = node_within_circle(Node,Circle),
+                    O = Node#node.status=:=obstacle,
                     if
-                        (Node#node.size > ?MINSIZE)
-                        and not N ->
-%%                            ?LOG("insert_circle: create children, recurse"),
+                        (((Node#node.size > ?MINSIZE)
+                        and not N) and not O) ->
                             Node#node{
                               children=lists:map(
                                          fun(ChildNode) ->
@@ -203,7 +199,6 @@ insert_circle(Node,Circle) ->
                                          new_children(Node)),
                               status=parent};
                         true ->
-%%                            ?LOG("insert_circle: min size, set status obstacle"),
                             Node#node{status=obstacle}
                     end
             end;
