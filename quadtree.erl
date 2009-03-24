@@ -11,15 +11,15 @@
 %% -endif.
 -define(LOG(Msg), io:format("{~p:~p}: ~p~n", [?MODULE, ?LINE, Msg])).
 
--define(MINSIZE, 5).
+-define(MINSIZE, 10).
 
 
 
 
 test() ->
     ?LOG("Debug is enabled"),
-    dbg:tracer(),
-    dbg:p(all, call),
+    %% dbg:tracer(),
+    %% dbg:p(all, call),
 
 %%%     dbg:tpl(quadtree, astar, 5, []),
 %%%     dbg:tpl(quadtree, within_circle, 2, []),
@@ -53,9 +53,6 @@ test() ->
         QuadTree,
         ListOfCircles),
 
-
-
-
     Start = random_point(),
     Goal = random_point(),
 
@@ -79,11 +76,10 @@ test() ->
 random_point() ->
     {random:uniform(400)-200,random:uniform(400)-200}.
 
-stretch(X) ->
-    (X+200).
-
-
-
+transform({X,Y}) ->
+    %% {X+200,Y+200}.
+    {(X+200),
+     (-Y+200)}.
 
 
 
@@ -367,15 +363,15 @@ draw_node(Node,Color) ->
     end,
     gs:create(rectangle,can1,
               [{coords,
-                [{stretch(X1),stretch(Y1)},
-                 {stretch(X2),stretch(Y2)}]},
+                [transform({X1,Y1}),
+                 transform({X2,Y2})]},
                {fill,Color1}]).
 
 draw_oval({X,Y},Color) ->
     gs:create(oval,can1,
               [{coords,
-                [{stretch(X)-5,stretch(Y)-5},
-                 {stretch(X)+5,stretch(Y)+5}]},
+                [transform({X-3,Y-3}),
+                 transform({X+3,Y+3})]},
                {fill,Color}]).
 
 
