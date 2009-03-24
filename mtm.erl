@@ -34,6 +34,7 @@ connect_simulator(Host,Port) ->
         {tcp,Socket,Bin} ->
             {ok, Msg} = regexp:split(binary_to_list(Bin)," "),
             World1 = parse_init_message(#world{},Msg),
+            init_new_round(World1),
             receive_loop(Socket,World1);
         {tcp_closed,Socket} ->
             ok
@@ -51,7 +52,6 @@ receive_loop(Socket,World) ->
                           " "),
             World1 = parse_message(World#world{aliens=[]},Msg),
 
-            %% quadtree:visualize(World1#world.quadtree,green),
             quadtree:draw_oval({World1#world.x,World1#world.y},blue),
 
             Command = get_command(World1),
@@ -60,6 +60,10 @@ receive_loop(Socket,World) ->
         {tcp_closed,Socket} ->
             ok
     end.
+
+init_new_round(World) ->
+    quadtree:visualize(World#world.quadtree,green),
+    World.
 
 
 get_command(World) ->
@@ -345,26 +349,27 @@ parse_message(World,["T"|List]) ->
 
 parse_message(World,["E",Time,Score]) ->
     io:format("EVENT: end of round: time: ~p score: ~p~n",[Time,Score]),
-    World;
-parse_message(World,["S",Score,";"]) ->
+    init_new_round(World);
+parse_message(World,["S",Score]) ->
     io:format("EVENT: end of round: score: ~p~n",[Score]),
-    World;
+    init_new_round(World);
 parse_message(World,["B",Time]) ->
     io:format("EVENT: Boulder crash: ~p~n",[Time]),
 %%%     throw({boulder_bounce,World});
-    World;
+    init_new_round(World);
 parse_message(World,["C",Time]) ->
     io:format("EVENT: Crater crash: ~p~n",[Time]),
     throw({crater_crash,World});
 parse_message(World,["K",Time]) ->
     io:format("EVENT: Killed by Martian!: ~p~n",[Time]),
-    World;
+    init_new_round(World);
 parse_message(World,[Event,Time]) ->
     io:format("EVENT: unknown!!! time: ~p kind of event: ~p~n",[Time,Event]),
+    init_new_round(World),
     throw({unknown_event,World});
 parse_message(World,Msg) ->
     io:format("unknown message: ~p~n",[Msg]),
-    World.
+    init_new_round(World).
     %% throw({unknown_msg,World,Msg}).
 
 
