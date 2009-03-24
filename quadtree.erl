@@ -11,7 +11,7 @@
 %% -endif.
 -define(LOG(Msg), io:format("{~p:~p}: ~p~n", [?MODULE, ?LINE, Msg])).
 
--define(MINSIZE, 10).
+-define(MINSIZE, 3).
 
 
 
@@ -85,7 +85,7 @@ transform({X,Y}) ->
 
 next_subgoal([GoalNode]) ->
     {GoalNode#node.x,GoalNode#node.y};
-next_subgoal([CurNode,NextNode|_]) ->
+next_subgoal([_,NextNode|_]) ->
     {NextNode#node.x,NextNode#node.y}.
     %% C1 = node_corners(CurNode),
     %% C2 = node_corners(NextNode),
@@ -108,8 +108,18 @@ next_subgoal([CurNode,NextNode|_]) ->
 astar(Tree,StartPoint,GoalPoint) ->
     StartNode = find_node(Tree,StartPoint),
     GoalNode = find_node(Tree,GoalPoint),
-    astar(Tree,GoalPoint,GoalNode,[],[{StartNode,0,[]}]).
-astar(_,_,_,_,[]) ->
+    visualize(StartNode,blue),
+    visualize(GoalNode,orange),
+    E = eq_node(StartNode,GoalNode),
+    if
+        E -> [StartNode];
+        true -> astar(Tree,GoalPoint,GoalNode,[],[{StartNode,0,[]}])
+    end.
+astar(Tree,_,_,_,[]) ->
+    visualize(Tree,white),
+    receive
+        impossible -> ok
+    end,
     failure;
 astar(Tree,GoalPoint,GoalNode,Closed,[{Node,CostSoFar,PathSoFar}|Open]) ->
     IsGoalReached = eq_node(Node,GoalNode),

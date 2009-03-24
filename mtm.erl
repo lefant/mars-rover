@@ -34,7 +34,7 @@ connect_simulator(Host,Port) ->
         {tcp,Socket,Bin} ->
             {ok, Msg} = regexp:split(binary_to_list(Bin)," "),
             World1 = parse_init_message(#world{},Msg),
-            init_new_round(World1),
+            visualize_world(World1),
             receive_loop(Socket,World1);
         {tcp_closed,Socket} ->
             ok
@@ -61,9 +61,11 @@ receive_loop(Socket,World) ->
             ok
     end.
 
-init_new_round(World) ->
+visualize_world(World) ->
     quadtree:visualize(World#world.quadtree,white),
-    World.
+    quadtree:visualize(World#world.path,yellow),
+    quadtree:draw_oval(World#world.goal,green),
+    ok.
 
 
 get_command(World) ->
@@ -71,6 +73,7 @@ get_command(World) ->
     Turn = correct_turn(
              World#world.turn,
              turn_goal(DiffTurn)),
+    ?LOG({"get_command: ",DiffTurn,Turn}),
     Accel = correct_accel(
               World#world.accel,
               accel_goal(
@@ -81,18 +84,37 @@ get_command(World) ->
 
 
 desired_dir(World) ->
-    X = World#world.x,
-    Y = World#world.y,
-    Dir = World#world.dir,
-    DesDir = math:atan(Y/X),
-    if
-        X > 0 -> DesDir1 = DesDir + math:pi();
-        true -> DesDir1 = DesDir
-    end,
+    {Vx,Vy} =
+        coords_to_pov(
+          World#world.x,World#world.y,
+          -World#world.dir,
+          World#world.goal),
 
-    {Speed,DesDir2} = avoid_obstacle(World,DesDir1),
-    Diff = DesDir2 - Dir,
-    {Speed,Diff}.
+    {Ex,Ey} = 
+        coords_to_pov(
+          0,0,
+          -World#world.dir,
+          {1,0}),
+
+    if
+        Vx < 0 ->
+            Speed = slow,
+            if
+                Vy == 0 -> Vy1 = 100;
+                true -> Vy1 = Vy
+            end;
+        true ->
+            Speed = fast,
+            Vy1 = Vy
+    end,
+    
+    ?LOG({"desired_dir: world ",World#world.x,World#world.y,(World#world.dir/math:pi())*180,World#world.goal}),
+    ?LOG({"desired_dir: V ",Vx,Vy,Vy1}),
+    ?LOG({"desired_dir: E ",Ex,Ey}),
+
+
+
+    {Speed,Vy1}.
 
 
 
@@ -240,8 +262,8 @@ coords_to_pov(Ox,Oy,Dir,{X,Y}) ->
 %%%%% steering
 
 turn_goal(Diff) ->
-    HardTresh = 0.4,
-    StraightTresh = 0.2,
+    HardTresh = 20,
+    StraightTresh = 5,
     if
         Diff < (-1*HardTresh) -> "R";
         ((-1*HardTresh) =< Diff) and (Diff < StraightTresh)-> "r";
@@ -331,47 +353,78 @@ parse_init_message(World,["I"|List]) ->
       maxspeed=str2num(MaxSpeed),
       maxturn=str2num(MaxTurn),
       maxhardturn=str2num(MaxHardTurn),
-      quadtree=QuadTree
+      quadtree=QuadTree,
+      curnode=QuadTree
      }.
 
 parse_message(World,["T"|List]) ->
     %% T time-stamp vehicle-ctl vehicle-x vehicle-y vehicle-dir vehicle-speed objects ;
     [_,VehicleCtl,VehicleX,VehicleY,VehicleDir,VehicleSpeed|ObjectList] = List,
+    X = str2num(VehicleX),
+    Y = str2num(VehicleY),
+    CurNode = quadtree:find_node(World#world.quadtree,{X,Y}),
+    E = quadtree:eq_node(CurNode,World#world.curnode),
+    if
+        not E ->
+            Path = quadtree:astar(
+                     World#world.quadtree,
+                     {World#world.x,World#world.y},
+                     {0,0}),
+            SubGoal = quadtree:next_subgoal(Path),
+            quadtree:draw_oval(SubGoal,green),
+            visualize_world(World),
+            ok;
+        true ->
+            SubGoal = World#world.goal,
+            Path = World#world.path
+    end,
+
     World1 = World#world{
                turn=string:substr(VehicleCtl, 2),
                accel=string:left(VehicleCtl, 1),
-               x=str2num(VehicleX),
-               y=str2num(VehicleY),
-               dir=(str2num(VehicleDir)/180)*math:pi(),
-               speed=str2num(VehicleSpeed)
+               x=X,
+               y=Y,
+               dir=(sanitize_dir(str2num(VehicleDir))),
+               speed=str2num(VehicleSpeed),
+               curnode=CurNode,
+               goal=SubGoal,
+               path=Path
               },
     parse_object_list(World1,ObjectList);
 
-parse_message(World,["E",Time,Score]) ->
-    io:format("EVENT: end of round: time: ~p score: ~p~n",[Time,Score]),
-    init_new_round(World);
-parse_message(World,["S",Score]) ->
-    io:format("EVENT: end of round: score: ~p~n",[Score]),
-    init_new_round(World);
-parse_message(World,["B",Time]) ->
-    io:format("EVENT: Boulder crash: ~p~n",[Time]),
-%%%     throw({boulder_bounce,World});
-    init_new_round(World);
-parse_message(World,["C",Time]) ->
-    io:format("EVENT: Crater crash: ~p~n",[Time]),
-    throw({crater_crash,World});
-parse_message(World,["K",Time]) ->
-    io:format("EVENT: Killed by Martian!: ~p~n",[Time]),
-    init_new_round(World);
-parse_message(World,[Event,Time]) ->
-    io:format("EVENT: unknown!!! time: ~p kind of event: ~p~n",[Time,Event]),
-    init_new_round(World),
-    throw({unknown_event,World});
+%% parse_message(World,["E",Time,Score]) ->
+%%     io:format("EVENT: end of round: time: ~p score: ~p~n",[Time,Score]),
+%%     init_new_round(World);
+%% parse_message(World,["S",Score]) ->
+%%     io:format("EVENT: end of round: score: ~p~n",[Score]),
+%%     init_new_round(World);
+%% parse_message(World,["B",Time]) ->
+%%     io:format("EVENT: Boulder crash: ~p~n",[Time]),
+%% %%%     throw({boulder_bounce,World});
+%%     init_new_round(World);
+%% parse_message(World,["C",Time]) ->
+%%     io:format("EVENT: Crater crash: ~p~n",[Time]),
+%%     throw({crater_crash,World});
+%% parse_message(World,["K",Time]) ->
+%%     io:format("EVENT: Killed by Martian!: ~p~n",[Time]),
+%%     init_new_round(World);
+%% parse_message(World,[Event,Time]) ->
+%%     io:format("EVENT: unknown!!! time: ~p kind of event: ~p~n",[Time,Event]),
+%%     init_new_round(World),
+%%     throw({unknown_event,World});
 parse_message(World,Msg) ->
     io:format("unknown message: ~p~n",[Msg]),
-    init_new_round(World).
+    visualize_world(World),
+    World.
     %% throw({unknown_msg,World,Msg}).
 
+
+sanitize_dir(Dir) ->
+    if
+        Dir < 0 -> ((Dir+360)/180)*math:pi();
+        Dir >= 360 -> ((Dir-360)/180)*math:pi();
+        true -> (Dir/180)*math:pi()
+    end.
 
 parse_object_list(World,[]) ->
     World;
@@ -404,40 +457,58 @@ parse_object_list(World,[Type,X1,Y1,R1|Rest]) ->
             if
                 AlreadyKnown -> parse_object_list(World,Rest);
                 true ->
-                    QuadTree =
-                        quadtree:insert_circle(
-                          World#world.quadtree,
-                          {X,Y,R}),
-                    Path = quadtree:astar(
-                      QuadTree,
-                      {World#world.x,World#world.y},
-                      {0,0}),
-                    Goal = quadtree:next_subgoal(Path),
-                    quadtree:visualize(Path,yellow),
-                    quadtree:draw_oval(Goal,green),
+                    World1 = update_quadtree(World,{X,Y,R}),
                     parse_object_list(
-                      World#world{
-                        boulders=[{X,Y,R}|World#world.boulders],
-                        quadtree=QuadTree,
-                        path=Path
+                      World1#world{
+                        boulders=[{X,Y,R}|World1#world.boulders]
                        },Rest)
             end;
         "c" ->
             AlreadyKnown = lists:member(
                              {X,Y,R},
                              World#world.craters),
-            if 
+            if
                 AlreadyKnown -> parse_object_list(World,Rest);
                 true ->
+                    World1 = update_quadtree(World,{X,Y,R}),
                     parse_object_list(
-                      World#world{
-                        craters=[{X,Y,R}|World#world.craters]
+                      World1#world{
+                        craters=[{X,Y,R}|World1#world.craters]
                        },Rest)
             end;
         "h" ->
             %%parse_object_list(World#world{home={X,Y,R}},Rest)
-            parse_object_list(World,Rest)
-    end.
+            parse_object_list(World,Rest);
+        Crap ->
+            io:format("parse_object_list: received inner crap ~p~n",[Crap]),
+            World
+    end;
+
+parse_object_list(World,[Crap]) ->
+    io:format("parse_object_list: received outer crap ~p~n",[Crap]),
+    World.
+
+
+
+update_quadtree(World,Circle) ->
+    QuadTree =
+        quadtree:insert_circle(
+          World#world.quadtree,
+          Circle),
+    Path = quadtree:astar(
+             QuadTree,
+             {World#world.x,World#world.y},
+             {0,0}),
+    %% Goal = quadtree:next_subgoal(Path),
+    %% quadtree:visualize(Path,yellow),
+    %% quadtree:draw_oval(Goal,green),
+    World1 = World#world{
+               quadtree=QuadTree,
+               path=Path
+              },
+    %% visualize_world(World1),
+    World1.
+
 
 
 str2num(Str) ->

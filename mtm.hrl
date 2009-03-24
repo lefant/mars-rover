@@ -21,5 +21,7 @@
           speed = 0,
 
           path=[],
+          curnode,
+          goal={0,0},
           quadtree
          }).
