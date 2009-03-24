@@ -2,70 +2,17 @@
 -compile(export_all).
 %%-export([bench/0]).
 
+-include("/home/lefant/shared/code/erlang/mars-rover/mtm.hrl").
+-include("/home/lefant/shared/code/erlang/mars-rover/quadtree.hrl").
+
 -ifdef(debug).
 -define(LOG(Msg), io:format("{~p:~p}: ~p~n", [?MODULE, ?LINE, Msg])).
 -else.
 -define(LOG(Msg), true).
 -endif.
 
--record(world, {
-          home = {0.000,0.000,5.000},
-          craters = [],
-          boulders = [],
-          aliens = [],
-
-          width = 100,
-          height = 100,
-          timelimit = 30000,
-          minsensor = 20,
-          maxsensor = 40,
-          maxspeed = 60,
-          maxturn = 20,
-          maxhardturn = 60,
-
-          turn = "-",
-          accel = "-",
-          x = -25.0,
-          y = 25,
-          dir = 50,
-          speed = 0
-         }).
 
 
-test() ->
-    ?LOG("Debug is enabled"),
-%%%     dbg:tracer(),
-%%%     dbg:p(all, call),
-%%%     dbg:tpl(mtm, coords_to_pov, 5, []),
-%%%     dbg:tpl(mtm, inner_prod, 4, []),
-%%%     dbg:tpl(mtm, receive_data, 3, []),
-    {0,0} = test_pov(0,0,0),
-    {0,0} = test_pov(0,0,1),
-
-    {1,0} = test_pov(1,0,0),
-    {0,1} = test_pov(0,1,0),
-
-    {0,1} = test_pov(1,0,1),
-    {-1,0} = test_pov(0,1,1),
-    {0,-1} = test_pov(-1,0,1),
-    {1,0} = test_pov(0,-1,1),
-
-    {-1.0,-1.0} = coords_to_pov(1,1,0,{0,0}),
-    {0.0,0.0} = coords_to_pov(-1,0,0,{-1,0}),
-
-%%    {71.34723270146793,46.436451994554766}}
-    coords_to_pov(116.633,-149.557,2.2331334012628097,{109.375,-234.375}),
-    coords_to_pov(116,-149,2.2331334012628097,{109,-234}),
-    coords_to_pov(100,-150,2.2331334012628097,{100,-250}),
-    coords_to_pov(0,0,2.2331334012628097,{0,-100}),
-    coords_to_pov(0,0,2.2331334012628097,{0,-100}),
-    coords_to_pov(0,0,2.2331334012628097,{0,-1}),
-    coords_to_pov(0,0,math:pi()/2,{0,-1}),
-    coords_to_pov(0,0,math:pi(),{0,-1}),
-    ok.
-test_pov(X,Y,E) ->
-    {X1,Y1} = coords_to_pov(0,0,E*(math:pi()/2),{X,Y}),
-    {trunc(X1),trunc(Y1)}.
 
 
 
@@ -101,6 +48,7 @@ receive_loop(Socket,World) ->
         {tcp_closed,Socket} ->
             ok
     end.
+
 
 get_command(World) ->
     {SpeedStyle,DiffTurn} = desired_dir(World),
@@ -230,6 +178,35 @@ avoid_obstacle(World,Dir) ->
     end.
 
 
+
+test_pov_funcs() ->
+    {0,0} = test_pov(0,0,0),
+    {0,0} = test_pov(0,0,1),
+
+    {1,0} = test_pov(1,0,0),
+    {0,1} = test_pov(0,1,0),
+
+    {0,1} = test_pov(1,0,1),
+    {-1,0} = test_pov(0,1,1),
+    {0,-1} = test_pov(-1,0,1),
+    {1,0} = test_pov(0,-1,1),
+
+    {-1.0,-1.0} = coords_to_pov(1,1,0,{0,0}),
+    {0.0,0.0} = coords_to_pov(-1,0,0,{-1,0}),
+
+    coords_to_pov(116.633,-149.557,2.2331334012628097,{109.375,-234.375}),
+    coords_to_pov(116,-149,2.2331334012628097,{109,-234}),
+    coords_to_pov(100,-150,2.2331334012628097,{100,-250}),
+    coords_to_pov(0,0,2.2331334012628097,{0,-100}),
+    coords_to_pov(0,0,2.2331334012628097,{0,-100}),
+    coords_to_pov(0,0,2.2331334012628097,{0,-1}),
+    coords_to_pov(0,0,math:pi()/2,{0,-1}),
+    coords_to_pov(0,0,math:pi(),{0,-1}),
+    ok.
+test_pov(X,Y,E) ->
+    {X1,Y1} = coords_to_pov(0,0,E*(math:pi()/2),{X,Y}),
+    {trunc(X1),trunc(Y1)}.
+
 coords_to_pov(Ox,Oy,Dir,{X,Y}) ->
     X1 = X-Ox,
     Y1 = Y-Oy,
@@ -244,6 +221,7 @@ coords_to_pov(Ox,Oy,Dir,{X,Y}) ->
 
 
 
+%%%%% steering
 
 turn_goal(Diff) ->
     HardTresh = 0.4,
@@ -315,9 +293,19 @@ correct_accel(Cur,Goal) ->
     end.
 
 
+
+%%%%% telemetry message parsing
+
 parse_init_message(World,["I"|List]) ->
     %% I dx dy time-limit min-sensor max-sensor max-speed max-turn max-hard-turn ;
     [Width,Height,TimeLimit,MinSensor,MaxSensor,MaxSpeed,MaxTurn,MaxHardTurn,_] = List,
+
+    QuadTree = #node{
+      x=0,
+      y=0,
+      size=trunc(str2num(Width)/2)
+     },
+
     World#world{
       width=str2num(Width),
       height=str2num(Height),
@@ -326,7 +314,8 @@ parse_init_message(World,["I"|List]) ->
       maxsensor=str2num(MaxSensor),
       maxspeed=str2num(MaxSpeed),
       maxturn=str2num(MaxTurn),
-      maxhardturn=str2num(MaxHardTurn)
+      maxhardturn=str2num(MaxHardTurn),
+      quadtree=QuadTree
      }.
 
 parse_message(World,["T"|List]) ->

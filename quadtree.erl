@@ -2,6 +2,7 @@
 -compile(export_all).
 %%-export([bench/0]).
 
+-include("/home/lefant/shared/code/erlang/mars-rover/quadtree.hrl").
 
 %% -ifdef(debug).
 %% -define(LOG(Msg), io:format("{~p:~p}: ~p~n", [?MODULE, ?LINE, Msg])).
@@ -12,13 +13,6 @@
 
 -define(MINSIZE, 5).
 
--record(node, {
-          x,
-          y,
-          size,
-          children=undefined,
-          status=empty
-}).
 
 
 
