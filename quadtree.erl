@@ -61,29 +61,19 @@ test() ->
 
 
 
-    I=gs:start(),
-    Win=gs:create(window, I,
-                  [{width, 1000},{height, 1000},
-                   {title,"Default Demo"},{map, true}]),
-    gs:create(canvas, can1,Win,
-              [{x,0},{y, 0},{width,1000},{height,1000},
-               {default,rectangle,{fill,black}},
-               {default,oval,{fill,green}}]),
-
-
-
-    visualize(Tree),
 
     Start = random_point(),
     Goal = random_point(),
 
     Way = astar(Tree,Start,Goal),
+
+    visualize_init(),
+    visualize(Tree,green),
+
     if
         Way == failure -> ok;
         true ->
-            lists:map(
-              fun(Node) -> visualize(Node,yellow) end,
-             Way)
+            visualize(Way,yellow)
     end,
 
     draw_oval(Start,blue),
@@ -349,38 +339,54 @@ neighbours_rec(Node,Leaf) ->
 
 
 
+%%%%% graphics for demo / debugging purposes
 
+% call before anything else
+visualize_init() ->
+    I=gs:start(),
+    Win=gs:create(window, I,
+                  [{width, 1000},{height, 1000},
+                   {title,"quadtree visualization"},{map, true}]),
+    gs:create(canvas, can1,Win,
+              [{x,0},{y, 0},{width,1000},{height,1000}]).
 
-
-visualize(Node) ->
-    visualize(Node,green).
+% visualize/2 takes a Node or list of Nodes and a color
+% will then recurse if necessary and draw it all
+visualize([],_) ->
+    ok;
+visualize([Node|List],Color) ->
+    visualize(Node,Color),
+    visualize(List,Color);
 visualize(Node,Color) ->
     if
         is_list(Node#node.children) ->
             lists:map(
               fun(ChildNode) ->
-                      visualize(ChildNode)
+                      visualize(ChildNode,Color)
               end,
               Node#node.children);
         true ->
-            draw(Node,Color)
+            draw_node(Node,Color)
     end.
 
-draw(Node,Color1) ->
+draw_node(Node,Color) ->
     [{X1,Y1},{X2,Y2},_,_] = corners({Node#node.x,Node#node.y,Node#node.size}),
     case Node#node.status of
-        obstacle -> Color = red;
-        empty -> Color = Color1
+        obstacle -> Color1 = red;
+        empty -> Color1 = Color
     end,
     gs:create(rectangle,can1,
               [{coords,
                 [{stretch(X1),stretch(Y1)},
                  {stretch(X2),stretch(Y2)}]},
-               {fill,Color}]).
+               {fill,Color1}]).
+
 draw_oval({X,Y},Color) ->
-    gs:create(oval,can1,[{coords,[{stretch(X)-5,stretch(Y)-5},
-                                  {stretch(X)+5,stretch(Y)+5}]},
-                         {fill,Color}]).
+    gs:create(oval,can1,
+              [{coords,
+                [{stretch(X)-5,stretch(Y)-5},
+                 {stretch(X)+5,stretch(Y)+5}]},
+               {fill,Color}]).
 
 
 
@@ -389,7 +395,7 @@ draw_oval({X,Y},Color) ->
 
 
 
-
+%%%%% node and geometrical helper functions
 
 replace_node(Item,List) ->
     replace_node(Item,List,[]).
@@ -405,8 +411,33 @@ replace_node(Item,[H|List],Res) ->
     end.
 
 
+eq_node(#node{x=X,y=Y},#node{x=X,y=Y}) ->
+    true;
+eq_node(_,_) ->
+    false.
+
+
+
 within_node(Node,Point) ->
-    within(Point,corners({Node#node.x,Node#node.y,Node#node.size})).
+    within(Point,node_corners(Node)).
+
+intersects_node(Node1,Node2) ->
+    C1 = node_corners(Node1),
+    C2 = node_corners(Node2),
+    lists:any(
+      fun(Point) -> within(Point,C1) end,
+      C2) or
+        lists:any(
+          fun(Point) -> within(Point,C2) end,
+          C1).
+
+node_within_circle(Node,Circle) ->
+    lists:all(
+      fun(Point) -> within_circle(Circle,Point) end,
+      node_corners(Node)).
+
+
+
 
 within({X,Y},[{X1,Y1},{X2,Y2},_,_]) ->
     ((X1 < X) and (X =< X2))
@@ -424,23 +455,10 @@ corners({X,Y,Size}) ->
      {X+Size,Y-Size},
      {X-Size,Y+Size}].
 
-intersects_node(Node1,Node2) ->
-    C1 = corners({Node1#node.x,Node1#node.y,Node1#node.size}),
-    C2 = corners({Node2#node.x,Node2#node.y,Node2#node.size}),
-    lists:any(
-      fun(Point) -> within(Point,C1) end,
-      C2) or
-        lists:any(
-          fun(Point) -> within(Point,C2) end,
-          C1).
-
-node_within_circle(Node,Circle) ->
-    lists:all(
-      fun(Point) -> within_circle(Circle,Point) end,
-      node_corners(Node)).
 
 within_circle({X,Y,R},Point) ->
     dist2({X,Y},Point) =< sqr(R).
+
 
 min_dist2(Node,Point) ->
     dist2(
@@ -451,24 +469,17 @@ min_dist2(Node,Point) ->
     %%     fun(NPoint) -> dist2(Point,NPoint) end,
     %%     node_corners(Node))).
 
-dist2({X1,Y1},{X2,Y2}) ->
-    sqr(X1-X2) + sqr(Y1-Y2).
-
 node_dist2(Node1,Node2) ->
     dist2({Node1#node.x,Node1#node.y},
           {Node2#node.x,Node2#node.y}).
 
-
-eq_node(#node{x=X,y=Y},#node{x=X,y=Y}) ->
-    true;
-eq_node(_,_) ->
-    false.
-
-
-
+dist2({X1,Y1},{X2,Y2}) ->
+    sqr(X1-X2) + sqr(Y1-Y2).
 
 sqr(X) ->
     X*X.
+
+
 
 
 
