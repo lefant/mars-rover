@@ -5,12 +5,13 @@
 -include("/home/lefant/shared/code/erlang/mars-rover/mtm.hrl").
 -include("/home/lefant/shared/code/erlang/mars-rover/quadtree.hrl").
 
--ifdef(debug).
--define(LOG(Msg), io:format("{~p:~p}: ~p~n", [?MODULE, ?LINE, Msg])).
--else.
--define(LOG(Msg), true).
--endif.
+%% -ifdef(debug).
+%% -define(LOG(Msg), io:format("{~p:~p}: ~p~n", [?MODULE, ?LINE, Msg])).
+%% -else.
+%% -define(LOG(Msg), true).
+%% -endif.
 
+-define(LOG(Msg), io:format("{~p:~p}: ~p~n", [?MODULE, ?LINE, Msg])).
 
 
 
@@ -18,6 +19,7 @@
 
 
 run() ->
+    quadtree:visualize_init(),
     connect_simulator(localhost,17676).
 
 
@@ -40,8 +42,18 @@ connect_simulator(Host,Port) ->
 receive_loop(Socket,World) ->
     receive
         {tcp,Socket,Bin} ->
-            {ok, Msg} = regexp:split(binary_to_list(Bin)," "),
+            {ok, MsgList} = regexp:split(binary_to_list(Bin),";"),
+            {ok, Msg} = regexp:split(
+                          lists:last(
+                            lists:filter(
+                              fun(Item) -> not (Item == []) end,
+                              MsgList)),
+                          " "),
             World1 = parse_message(World#world{aliens=[]},Msg),
+
+            %% quadtree:visualize(World1#world.quadtree,green),
+            quadtree:draw_oval({World1#world.x,World1#world.y},blue),
+
             Command = get_command(World1),
             gen_tcp:send(Socket,Command),
             receive_loop(Socket,World1);
@@ -142,7 +154,7 @@ avoid_obstacle(World,Dir) ->
             end,
             Diff = math:atan(S*((R+5)-abs(Y))*100/(X*X)),
             Dir1 = Dir + Diff,
-            ?LOG({"avoid_obstacles one THREAT: ",{trunc(X),trunc(Y),trunc(R)},Diff}),
+            %% ?LOG({"avoid_obstacles one THREAT: ",{trunc(X),trunc(Y),trunc(R)},Diff}),
             {normal,Dir1};
         [Threat|_] ->
             {X,Y,R} = Threat,
@@ -152,7 +164,7 @@ avoid_obstacle(World,Dir) ->
             end,
             Diff = math:atan(S*((R+5)-abs(Y))*100/(X*X)),
             Dir1 = Dir + Diff,
-            ?LOG({"avoid_obstacles one THREAT: ",{trunc(X),trunc(Y),trunc(R)},Diff}),
+            %% ?LOG({"avoid_obstacles one THREAT: ",{trunc(X),trunc(Y),trunc(R)},Diff}),
             {slow,Dir1}
 
 %%%         ThreatList ->
@@ -331,23 +343,23 @@ parse_message(World,["T"|List]) ->
               },
     parse_object_list(World1,ObjectList);
 
-parse_message(World,["E",Time,Score,";"]) ->
+parse_message(World,["E",Time,Score]) ->
     io:format("EVENT: end of round: time: ~p score: ~p~n",[Time,Score]),
     World;
 parse_message(World,["S",Score,";"]) ->
     io:format("EVENT: end of round: score: ~p~n",[Score]),
     World;
-parse_message(World,["B",Time,";"]) ->
+parse_message(World,["B",Time]) ->
     io:format("EVENT: Boulder crash: ~p~n",[Time]),
 %%%     throw({boulder_bounce,World});
     World;
-parse_message(World,["C",Time,";"]) ->
+parse_message(World,["C",Time]) ->
     io:format("EVENT: Crater crash: ~p~n",[Time]),
     throw({crater_crash,World});
-parse_message(World,["K",Time,";"]) ->
+parse_message(World,["K",Time]) ->
     io:format("EVENT: Killed by Martian!: ~p~n",[Time]),
     World;
-parse_message(World,[Event,Time,";"]) ->
+parse_message(World,[Event,Time]) ->
     io:format("EVENT: unknown!!! time: ~p kind of event: ~p~n",[Time,Event]),
     throw({unknown_event,World});
 parse_message(World,Msg) ->
@@ -356,7 +368,7 @@ parse_message(World,Msg) ->
     %% throw({unknown_msg,World,Msg}).
 
 
-parse_object_list(World,[";"]) ->
+parse_object_list(World,[]) ->
     World;
 parse_object_list(World,[Type,X1,Y1,Dir1,Speed1|Rest]) when Type == "m" ->
     X = str2num(X1),
@@ -384,12 +396,17 @@ parse_object_list(World,[Type,X1,Y1,R1|Rest]) ->
         "b" ->
             AlreadyKnown = lists:member(
                              {X,Y,R},World#world.boulders),
-            if 
+            if
                 AlreadyKnown -> parse_object_list(World,Rest);
                 true ->
+                    QuadTree =
+                        quadtree:insert_circle(
+                          World#world.quadtree,
+                          {X,Y,R}),
                     parse_object_list(
                       World#world{
-                        boulders=[{X,Y,R}|World#world.boulders]
+                        boulders=[{X,Y,R}|World#world.boulders],
+                        quadtree=QuadTree
                        },Rest)
             end;
         "c" ->
