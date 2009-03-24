@@ -11,7 +11,7 @@
 %% -endif.
 -define(LOG(Msg), io:format("{~p:~p}: ~p~n", [?MODULE, ?LINE, Msg])).
 
--define(MINSIZE, 3).
+-define(MINSIZE, 5).
 
 
 
@@ -83,10 +83,13 @@ transform({X,Y}) ->
     {(X+200),
      (-Y+200)}.
 
+next_subgoal([]) ->
+    {{0,0},[]};
 next_subgoal([GoalNode]) ->
-    {GoalNode#node.x,GoalNode#node.y};
-next_subgoal([_,NextNode|_]) ->
-    {NextNode#node.x,NextNode#node.y}.
+    ?LOG({"next_subgoal, final subgoal: ",{GoalNode#node.x,GoalNode#node.y}}),
+    {{0,0},[]};
+next_subgoal([_,NextNode|Path]) ->
+    {{NextNode#node.x,NextNode#node.y},[NextNode|Path]}.
     %% C1 = node_corners(CurNode),
     %% C2 = node_corners(NextNode),
     %% [P1,P2] =
@@ -108,8 +111,8 @@ next_subgoal([_,NextNode|_]) ->
 astar(Tree,StartPoint,GoalPoint) ->
     StartNode = find_node(Tree,StartPoint),
     GoalNode = find_node(Tree,GoalPoint),
-    visualize(StartNode,blue),
-    visualize(GoalNode,orange),
+    %% visualize(StartNode,blue),
+    %% visualize(GoalNode,orange),
     E = eq_node(StartNode,GoalNode),
     if
         E -> [StartNode];

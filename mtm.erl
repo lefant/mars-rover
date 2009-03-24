@@ -16,13 +16,26 @@
 
 
 
+test_run() ->
+    quadtree:visualize_init(),
+    {ok, Socket} = gen_tcp:connect(localhost,17676,
+                                   [binary,
+                                    {packet, 0},
+                                    {nodelay, true}]),
+    ?LOG("connection to simulator successfully established"),
+    receive
+        {tcp,Socket,Bin} ->
+            {ok, Msg} = regexp:split(binary_to_list(Bin)," "),
+            World1 = parse_init_message(#world{},Msg),
+            visualize_world(World1),
+            receive_loop(Socket,World1);
+        {tcp_closed,Socket} ->
+            ok
+    end.
 
 
 run() ->
-    quadtree:visualize_init(),
     connect_simulator(localhost,17676).
-
-
 
 connect_simulator(Host,Port) ->
     {ok, Socket} = gen_tcp:connect(Host,Port,
@@ -52,7 +65,7 @@ receive_loop(Socket,World) ->
                           " "),
             World1 = parse_message(World#world{aliens=[]},Msg),
 
-            quadtree:draw_oval({World1#world.x,World1#world.y},blue),
+            %% quadtree:draw_oval({World1#world.x,World1#world.y},blue),
 
             Command = get_command(World1),
             gen_tcp:send(Socket,Command),
@@ -62,10 +75,11 @@ receive_loop(Socket,World) ->
     end.
 
 visualize_world(World) ->
-    quadtree:visualize(World#world.quadtree,white),
-    quadtree:visualize(World#world.path,yellow),
-    quadtree:draw_oval(World#world.goal,green),
     ok.
+    %% quadtree:visualize(World#world.quadtree,white),
+    %% quadtree:visualize(World#world.path,yellow),
+    %% quadtree:draw_oval(World#world.goal,green),
+    %% ok.
 
 
 get_command(World) ->
@@ -73,7 +87,6 @@ get_command(World) ->
     Turn = correct_turn(
              World#world.turn,
              turn_goal(DiffTurn)),
-    ?LOG({"get_command: ",DiffTurn,Turn}),
     Accel = correct_accel(
               World#world.accel,
               accel_goal(
@@ -90,130 +103,26 @@ desired_dir(World) ->
           -World#world.dir,
           World#world.goal),
 
-    {Ex,Ey} = 
-        coords_to_pov(
-          0,0,
-          -World#world.dir,
-          {1,0}),
-
     if
         Vx < 0 ->
-            Speed = slow,
             if
                 Vy == 0 -> Vy1 = 100;
                 true -> Vy1 = Vy
             end;
         true ->
-            Speed = fast,
             Vy1 = Vy
     end,
-    
-    ?LOG({"desired_dir: world ",World#world.x,World#world.y,(World#world.dir/math:pi())*180,World#world.goal}),
-    ?LOG({"desired_dir: V ",Vx,Vy,Vy1}),
-    ?LOG({"desired_dir: E ",Ex,Ey}),
 
-
-
+    if
+        Vy1/Vx < 0 -> Speed = slow;
+        Vx > 2*Vy1 -> Speed = fast;
+        true -> Speed = normal
+    end,
     {Speed,Vy1}.
 
 
 
 
-avoid_obstacle(World,Dir) ->
-    %% build a list of all dangers, excluding ones
-    %% we cannot hit without going at least 100
-    Dangers = World#world.craters ++ World#world.boulders ++
-        lists:map(
-          fun({X,Y,_,_}) ->
-                  {X,Y,1}
-          end,
-          World#world.aliens),
-%%    ?LOG({"avoid_obstacles dangers: ",Dangers}),
-    Dangers1 =
-        lists:filter(
-          fun({X,Y,R})->
-                  lists:min([abs(X-World#world.x),abs(Y-World#world.y)]) - R < 50
-          end,
-          Dangers),
-%%    ?LOG({"avoid_obstacles prefiltered dangers: ",Dangers1}),
-
-    %% convert all coordinates to ones relative to our vehicle facing
-    %% forward on the Y-axis
-    Obstacles = 
-        lists:map(
-          fun({X,Y,R})->
-                  {X1,Y1} = coords_to_pov(
-                            World#world.x,World#world.y,Dir,
-                            {X,Y}),
-                  {X1,Y1,R}
-          end,
-          Dangers1),
-%%    ?LOG({"avoid_obstacles obstacles: ",Obstacles}),
-    %% filter out everything we cannot hit by going straight ahead
-
-    MinDist =
-        lists:min([
-                   30,
-                   math:sqrt(
-                     World#world.x*World#world.x
-                     +World#world.y*World#world.y)]),
-    Obstacles1 =
-        lists:filter(
-          fun({X,Y,R})->
-%%%                   ?LOG({"avoid_obstacles filtering: ",X,Y,R,abs(Y)-R}),
-                  ((X > 0) and (X-R < MinDist)) and (abs(Y) < R+2)
-          end,
-          Obstacles),
-%%%     ?LOG({"avoid_obstacles filtered obstacles: ",Obstacles1}),
-%%    ?LOG({"avoid_obstacles: ",length(Dangers),length(Dangers1),length(Obstacles),length(Obstacles1)}),
-
-    SortedObstacles = lists:keysort(2,Obstacles1),
-%%%     ?LOG({"avoid_obstacles sorted obstacles: ",SortedObstacles}),
-
-    case SortedObstacles of
-        [] -> {fast,Dir};
-        [Threat] ->
-            {X,Y,R} = Threat,
-            if
-                Y >= 0 -> S=1;
-                Y < 0 -> S=-1
-            end,
-            Diff = math:atan(S*((R+5)-abs(Y))*100/(X*X)),
-            Dir1 = Dir + Diff,
-            %% ?LOG({"avoid_obstacles one THREAT: ",{trunc(X),trunc(Y),trunc(R)},Diff}),
-            {normal,Dir1};
-        [Threat|_] ->
-            {X,Y,R} = Threat,
-            if
-                Y >= 0 -> S=1;
-                Y < 0 -> S=-1
-            end,
-            Diff = math:atan(S*((R+5)-abs(Y))*100/(X*X)),
-            Dir1 = Dir + Diff,
-            %% ?LOG({"avoid_obstacles one THREAT: ",{trunc(X),trunc(Y),trunc(R)},Diff}),
-            {slow,Dir1}
-
-%%%         ThreatList ->
-%%%             {X,Y,R} = lists:foldl(
-%%%                         fun({X,Y,R},{Wx,Wy,Wr}) ->
-%%%                                 Wx1 = lists:min([X,Wx]),
-%%%                                 if
-%%%                                     abs(Y)-R<abs(Wy)-Wr -> {Wx1,Y,R};
-%%%                                     true -> {Wx1,Wy,Wr}
-%%%                                 end
-%%%                         end,
-%%%                         {1000,1000,1},
-%%%                         ThreatList),
-%%%             if
-%%%                 Y >= 0 -> S=1;
-%%%                 Y < 0 -> S=-1
-%%%             end,
-%%%             Diff = math:atan(S*((R+5)-abs(Y))*100/(X*X)),
-%%%             Dir1 = Dir + Diff,
-%%%             ?LOG({"avoid_obstacles THREAT: ",{trunc(X),trunc(Y),trunc(R)},Diff}),
-%%%             {slow,Dir1}
-
-    end.
 
 
 
@@ -262,8 +171,8 @@ coords_to_pov(Ox,Oy,Dir,{X,Y}) ->
 %%%%% steering
 
 turn_goal(Diff) ->
-    HardTresh = 20,
-    StraightTresh = 5,
+    HardTresh = 30,
+    StraightTresh = 4,
     if
         Diff < (-1*HardTresh) -> "R";
         ((-1*HardTresh) =< Diff) and (Diff < StraightTresh)-> "r";
@@ -366,13 +275,9 @@ parse_message(World,["T"|List]) ->
     E = quadtree:eq_node(CurNode,World#world.curnode),
     if
         not E ->
-            Path = quadtree:astar(
-                     World#world.quadtree,
-                     {World#world.x,World#world.y},
-                     {0,0}),
-            SubGoal = quadtree:next_subgoal(Path),
-            quadtree:draw_oval(SubGoal,green),
+            {SubGoal,Path} = quadtree:next_subgoal(World#world.path),
             visualize_world(World),
+            %% quadtree:draw_oval(SubGoal,green),
             ok;
         true ->
             SubGoal = World#world.goal,
@@ -414,8 +319,15 @@ parse_message(World,["T"|List]) ->
 %%     throw({unknown_event,World});
 parse_message(World,Msg) ->
     io:format("unknown message: ~p~n",[Msg]),
-    visualize_world(World),
-    World.
+    Path = quadtree:astar(
+             World#world.quadtree,
+             {World#world.x,World#world.y},
+             {0,0}),
+    World1 = World#world{
+               path=Path
+              },
+    visualize_world(World1),
+    World1.
     %% throw({unknown_msg,World,Msg}).
 
 
@@ -490,7 +402,7 @@ parse_object_list(World,[Crap]) ->
 
 
 
-update_quadtree(World,Circle) ->
+update_quadtree(World,Circle) -> 
     QuadTree =
         quadtree:insert_circle(
           World#world.quadtree,
@@ -499,9 +411,6 @@ update_quadtree(World,Circle) ->
              QuadTree,
              {World#world.x,World#world.y},
              {0,0}),
-    %% Goal = quadtree:next_subgoal(Path),
-    %% quadtree:visualize(Path,yellow),
-    %% quadtree:draw_oval(Goal,green),
     World1 = World#world{
                quadtree=QuadTree,
                path=Path
@@ -514,3 +423,108 @@ update_quadtree(World,Circle) ->
 str2num(Str) ->
     {Num,_} = string:to_float(Str),
     Num.
+
+
+
+
+
+
+
+
+
+
+avoid_obstacle(World,Dir) ->
+    %% build a list of all dangers, excluding ones
+    %% we cannot hit without going at least 100
+    Dangers = World#world.craters ++ World#world.boulders ++
+        lists:map(
+          fun({X,Y,_,_}) ->
+                  {X,Y,1}
+          end,
+          World#world.aliens),
+%%    ?LOG({"avoid_obstacles dangers: ",Dangers}),
+    Dangers1 =
+        lists:filter(
+          fun({X,Y,R})->
+                  lists:min([abs(X-World#world.x),abs(Y-World#world.y)]) - R < 50
+          end,
+          Dangers),
+%%    ?LOG({"avoid_obstacles prefiltered dangers: ",Dangers1}),
+
+    %% convert all coordinates to ones relative to our vehicle facing
+    %% forward on the Y-axis
+    Obstacles = 
+        lists:map(
+          fun({X,Y,R})->
+                  {X1,Y1} = coords_to_pov(
+                            World#world.x,World#world.y,Dir,
+                            {X,Y}),
+                  {X1,Y1,R}
+          end,
+          Dangers1),
+%%    ?LOG({"avoid_obstacles obstacles: ",Obstacles}),
+    %% filter out everything we cannot hit by going straight ahead
+
+    MinDist =
+        lists:min([
+                   30,
+                   math:sqrt(
+                     World#world.x*World#world.x
+                     +World#world.y*World#world.y)]),
+    Obstacles1 =
+        lists:filter(
+          fun({X,Y,R})->
+%%%                   ?LOG({"avoid_obstacles filtering: ",X,Y,R,abs(Y)-R}),
+                  ((X > 0) and (X-R < MinDist)) and (abs(Y) < R+2)
+          end,
+          Obstacles),
+%%%     ?LOG({"avoid_obstacles filtered obstacles: ",Obstacles1}),
+%%    ?LOG({"avoid_obstacles: ",length(Dangers),length(Dangers1),length(Obstacles),length(Obstacles1)}),
+
+    SortedObstacles = lists:keysort(2,Obstacles1),
+%%%     ?LOG({"avoid_obstacles sorted obstacles: ",SortedObstacles}),
+
+    case SortedObstacles of
+        [] -> {fast,Dir};
+        [Threat] ->
+            {X,Y,R} = Threat,
+            if
+                Y >= 0 -> S=1;
+                Y < 0 -> S=-1
+            end,
+            Diff = math:atan(S*((R+5)-abs(Y))*100/(X*X)),
+            Dir1 = Dir + Diff,
+            %% ?LOG({"avoid_obstacles one THREAT: ",{trunc(X),trunc(Y),trunc(R)},Diff}),
+            {normal,Dir1};
+        [Threat|_] ->
+            {X,Y,R} = Threat,
+            if
+                Y >= 0 -> S=1;
+                Y < 0 -> S=-1
+            end,
+            Diff = math:atan(S*((R+5)-abs(Y))*100/(X*X)),
+            Dir1 = Dir + Diff,
+            %% ?LOG({"avoid_obstacles one THREAT: ",{trunc(X),trunc(Y),trunc(R)},Diff}),
+            {slow,Dir1}
+
+%%%         ThreatList ->
+%%%             {X,Y,R} = lists:foldl(
+%%%                         fun({X,Y,R},{Wx,Wy,Wr}) ->
+%%%                                 Wx1 = lists:min([X,Wx]),
+%%%                                 if
+%%%                                     abs(Y)-R<abs(Wy)-Wr -> {Wx1,Y,R};
+%%%                                     true -> {Wx1,Wy,Wr}
+%%%                                 end
+%%%                         end,
+%%%                         {1000,1000,1},
+%%%                         ThreatList),
+%%%             if
+%%%                 Y >= 0 -> S=1;
+%%%                 Y < 0 -> S=-1
+%%%             end,
+%%%             Diff = math:atan(S*((R+5)-abs(Y))*100/(X*X)),
+%%%             Dir1 = Dir + Diff,
+%%%             ?LOG({"avoid_obstacles THREAT: ",{trunc(X),trunc(Y),trunc(R)},Diff}),
+%%%             {slow,Dir1}
+
+    end.
