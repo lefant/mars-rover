@@ -1,4 +1,4 @@
--record(node, {
+-record(quadtree, {
           x,
           y,
           size,

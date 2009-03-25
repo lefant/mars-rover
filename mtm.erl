@@ -223,7 +223,7 @@ parse_init_message(World,["I"|List]) ->
     %% I dx dy time-limit min-sensor max-sensor max-speed max-turn max-hard-turn ;
     [Width,Height,TimeLimit,MinSensor,MaxSensor,MaxSpeed,MaxTurn,MaxHardTurn,_] = List,
 
-    QuadTree = #node{
+    QuadTree = #quadtree{
       x=0,
       y=0,
       size=trunc(str2num(Width)/2)
