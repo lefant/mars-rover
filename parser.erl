@@ -71,28 +71,10 @@ parse_message(World,["T"|List]) ->
               },
     parse_object_list(World1,ObjectList);
 
-%% parse_message(World,["E",Time,Score]) ->
-%%     io:format("EVENT: end of round: time: ~p score: ~p~n",[Time,Score]),
-%%     init_new_round(World);
-%% parse_message(World,["S",Score]) ->
-%%     io:format("EVENT: end of round: score: ~p~n",[Score]),
-%%     init_new_round(World);
-%% parse_message(World,["B",Time]) ->
-%%     io:format("EVENT: Boulder crash: ~p~n",[Time]),
-%% %%%     throw({boulder_bounce,World});
-%%     init_new_round(World);
-%% parse_message(World,["C",Time]) ->
-%%     io:format("EVENT: Crater crash: ~p~n",[Time]),
-%%     throw({crater_crash,World});
-%% parse_message(World,["K",Time]) ->
-%%     io:format("EVENT: Killed by Martian!: ~p~n",[Time]),
-%%     init_new_round(World);
-%% parse_message(World,[Event,Time]) ->
-%%     io:format("EVENT: unknown!!! time: ~p kind of event: ~p~n",[Time,Event]),
-%%     init_new_round(World),
-%%     throw({unknown_event,World});
-parse_message(World,Msg) ->
-    io:format("unknown message: ~p~n",[Msg]),
+parse_message(World,["E",Time,Score]) ->
+    io:format("EVENT: end of round: time: ~p score: ~p~n",[Time,Score]),
+    visualizer ! {clear},
+    quadtree:visualize(World#world.quadtree,white),
     Path = quadtree:astar(
              World#world.quadtree,
              {World#world.x,World#world.y},
@@ -100,8 +82,25 @@ parse_message(World,Msg) ->
     World1 = World#world{
                path=Path
               },
-    World1.
-    %% throw({unknown_msg,World,Msg}).
+    World1;
+parse_message(World,["S",Score]) ->
+    io:format("EVENT: end of round: score: ~p~n",[Score]),
+    World;
+parse_message(World,["B",Time]) ->
+    io:format("EVENT: Boulder crash: ~p~n",[Time]),
+    World;
+parse_message(World,["C",Time]) ->
+    io:format("EVENT: Crater crash: ~p~n",[Time]),
+    World;
+parse_message(World,["K",Time]) ->
+    io:format("EVENT: Killed by Martian!: ~p~n",[Time]),
+    World;
+parse_message(World,[Event,Time]) ->
+    io:format("EVENT: unknown!!! time: ~p kind of event: ~p~n",[Time,Event]),
+    World;
+parse_message(World,Msg) ->
+    io:format("unknown message: ~p~n",[Msg]),
+    throw({unknown_msg,World,Msg}).
 
 
 sanitize_dir(Dir) ->
