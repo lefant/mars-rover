@@ -26,7 +26,6 @@ test() ->
     %% dbg:tpl(quadtree, within_circle, 2, []),
     %% dbg:tpl(quadtree, within_node, 2, []),
     %% dbg:tpl(quadtree, intersects_node, 2, []),
-    %% dbg:tpl(quadtree, within, 2, []),
     %% dbg:tpl(quadtree, corners, 1, []),
     %% dbg:tpl(quadtree, intersects_circle, 2, []),
 
@@ -35,19 +34,28 @@ test() ->
     {A,B,C} = erlang:now(),
     random:seed(A,B,C),
 
-    ListOfCircles =
-        lists:map(
-          fun(_) ->
-                  {X,Y} = random_point(),
-                  {X,Y,random:uniform(30)}
-          end,
-          string:left("",50)),
+    QuadTree = new(200),
 
-    QuadTree = #quadtree{
-      x=0,
-      y=0,
-      size=200
-     },
+    Start = random_point(),
+    Goal = random_point(),
+
+
+    ListOfCircles =
+        lists:filter(
+          fun({X,Y,R})
+             -> not within_circle({X,Y,R+5},Goal)
+          end,
+          lists:filter(
+            fun({X,Y,R})
+               -> not within_circle({X,Y,R+5},Start)
+            end,
+            lists:map(
+              fun(_) ->
+                      {X,Y} = random_point(),
+                      {X,Y,random:uniform(30)}
+              end,
+              string:left("",20)))),
+
 
     Tree = lists:foldl(
         fun(Circle,Node)
@@ -56,8 +64,6 @@ test() ->
         QuadTree,
         ListOfCircles),
 
-    Start = random_point(),
-    Goal = random_point(),
 
     Path = astar(Tree,Start,Goal),
 
@@ -67,8 +73,8 @@ test() ->
             ok;
         true ->
             ?LOG({"test: PATH found"}),
-            _ = next_subgoal(Path),
-            visualize(Path,yellow)
+            visualize(Path,yellow),
+            _ = next_subgoal(Path)
     end,
 
     visualizer ! {oval,Start,blue},
@@ -82,6 +88,14 @@ random_point() ->
 
 
 
+new(Size) ->
+    #quadtree{
+     x=0,
+     y=0,
+     size=Size
+    }.
+
+
 
 next_subgoal([]) ->
     {{0,0},[]};
@@ -90,25 +104,48 @@ next_subgoal([GoalNode]) ->
     visualizer ! {oval,{0,0},green},
     {{0,0},[]};
 next_subgoal([LastNode,NextNode|Path]) ->
-    NextGoal = {NextNode#quadtree.x,NextNode#quadtree.y},
+    N = {NextNode#quadtree.x,NextNode#quadtree.y},
+
+    C1 = node_corners(LastNode),
+    C2 = node_corners(NextNode),
+
+    ListA = lists:filter(
+              fun(Point) ->
+                      within_closed(Point,C1)
+              end,
+              C2),
+
+    ListB = lists:filter(
+              fun(Point) ->
+                      within_closed(Point,C2) end,
+              C1),
+
+    CommonPointList =
+        lists:usort(
+          fun({X1,Y1},{X2,Y2}) ->
+                  (X1 =< X2) and (Y1 =< Y2)
+          end,
+          ListA ++ ListB),
+
+    %% ?LOG({"next_subgoal, commonpointlist ",CommonPointList}),
+
+    case CommonPointList of
+        %% [] ->
+        %%     NextGoal = N;
+        %% [P] ->
+        %%     visualizer ! {oval, P, black},
+        %%     NextGoal = midpoint(N,P);
+        [P1,P2] ->
+            visualizer ! {oval, P1, black},
+            visualizer ! {oval, P2, black},
+            NextGoal =
+                midpoint(N,
+                         midpoint(P1,P2))
+    end,
+
     visualizer ! {oval,{LastNode#quadtree.x,LastNode#quadtree.y},yellow},
     visualizer ! {oval,NextGoal,green},
     {NextGoal,[NextNode|Path]}.
-    %% C1 = node_corners(CurNode),
-    %% C2 = node_corners(NextNode),
-    %% [P1,P2] =
-    %%     lists:usort(
-    %%       fun(A,B) -> A /= B end,
-    %%       lists:filter(
-    %%         fun(Point) -> within(Point,C1) end,
-    %%         C2) ++
-    %%       lists:filter(
-    %%         fun(Point) -> within(Point,C2) end,
-    %%         C1)),
-    %% {X1,Y1} = P1,
-    %% {X2,Y2} = P2,
-    %% {(X1+X2)/2,(Y1+Y2)/2}.
-
 
 
 
@@ -437,6 +474,11 @@ within({X,Y},[{X1,Y1},{X2,Y2},_,_]) ->
         and
           ((Y1 < Y) and (Y =< Y2)).
 
+within_closed({X,Y},[{X1,Y1},{X2,Y2},_,_]) ->
+    ((X1 =< X) and (X =< X2))
+        and
+          ((Y1 =< Y) and (Y =< Y2)).
+
 node_corners(Node) ->
     corners({Node#quadtree.x,
              Node#quadtree.y,
@@ -468,6 +510,9 @@ node_dist2(Node1,Node2) ->
 
 dist2({X1,Y1},{X2,Y2}) ->
     sqr(X1-X2) + sqr(Y1-Y2).
+
+midpoint({X1,Y1},{X2,Y2}) ->
+    {(X1+X2)/2,(Y1+Y2)/2}.
 
 sqr(X) ->
     X*X.
