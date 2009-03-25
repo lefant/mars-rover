@@ -18,9 +18,11 @@
 %%%%% telemetry message parsing
 
 test() ->
-    
     ok.
 
+
+start() ->
+    ok.
 
 
 parse_init_message(World,["I"|List]) ->
