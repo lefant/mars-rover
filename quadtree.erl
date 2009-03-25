@@ -103,47 +103,15 @@ next_subgoal([GoalNode]) ->
     ?LOG({"next_subgoal, final subgoal: ",{GoalNode#quadtree.x,GoalNode#quadtree.y}}),
     visualizer ! {oval,{0,0},green},
     {{0,0},[]};
-next_subgoal([LastNode,NextNode|Path]) ->
-    N = {NextNode#quadtree.x,NextNode#quadtree.y},
+next_subgoal([LastNode,NextNode]) ->
+    next_subgoal([LastNode,NextNode,#quadtree{x=0,y=0,size=20}]);
+next_subgoal([LastNode,CurNode,NextNode|Path]) ->
+    %% N = {NextNode#quadtree.x,NextNode#quadtree.y},
 
-    C1 = node_corners(LastNode),
-    C2 = node_corners(NextNode),
+    NextGoal = midpoint(
+        nodes_touching(LastNode,CurNode),
+        nodes_touching(CurNode,NextNode)),
 
-    ListA = lists:filter(
-              fun(Point) ->
-                      within_closed(Point,C1)
-              end,
-              C2),
-
-    ListB = lists:filter(
-              fun(Point) ->
-                      within_closed(Point,C2) end,
-              C1),
-
-    CommonPointList =
-        lists:usort(
-          fun({X1,Y1},{X2,Y2}) ->
-                  (X1 =< X2) and (Y1 =< Y2)
-          end,
-          ListA ++ ListB),
-
-    %% ?LOG({"next_subgoal, commonpointlist ",CommonPointList}),
-
-    case CommonPointList of
-        %% [] ->
-        %%     NextGoal = N;
-        %% [P] ->
-        %%     visualizer ! {oval, P, black},
-        %%     NextGoal = midpoint(N,P);
-        [P1,P2] ->
-            visualizer ! {oval, P1, black},
-            visualizer ! {oval, P2, black},
-            NextGoal =
-                midpoint(N,
-                         midpoint(P1,P2))
-    end,
-
-    visualizer ! {oval,{LastNode#quadtree.x,LastNode#quadtree.y},yellow},
     visualizer ! {oval,NextGoal,green},
     {NextGoal,[NextNode|Path]}.
 
@@ -467,6 +435,38 @@ node_within_circle(Node,Circle) ->
       node_corners(Node)).
 
 
+nodes_touching(N1,N2) ->
+    C1 = node_corners(N1),
+    C2 = node_corners(N2),
+
+    ListA = lists:filter(
+              fun(Point) ->
+                      within_closed(Point,C1)
+              end,
+              C2),
+    ListB = lists:filter(
+              fun(Point) ->
+                      within_closed(Point,C2) end,
+              C1),
+
+    CommonPointList = lists:usort(
+      fun({X1,Y1},{X2,Y2}) ->
+              (X1 =< X2) and (Y1 =< Y2)
+      end,
+      ListA ++ ListB),
+
+    case CommonPointList of
+        [] ->
+            ?LOG({"nodes_touching: hmpf! NOT touching",N1,N2}),
+            {N2#quadtree.x,N2#quadtree.y};
+        %% [P] ->
+        %%     visualizer ! {oval, P, black},
+        %%     NextGoal = midpoint(N,P);
+        [P1,P2] ->
+            visualizer ! {oval, P1, black},
+            visualizer ! {oval, P2, black},
+            midpoint(P1,P2)
+    end.
 
 
 within({X,Y},[{X1,Y1},{X2,Y2},_,_]) ->
