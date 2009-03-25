@@ -18,16 +18,19 @@
 
 test() ->
     ?LOG("Debug is enabled"),
+
     %% dbg:tracer(),
     %% dbg:p(all, call),
 
-%%%     dbg:tpl(quadtree, astar, 5, []),
-%%%     dbg:tpl(quadtree, within_circle, 2, []),
-%%%     dbg:tpl(quadtree, within_node, 2, []),
-%%%     dbg:tpl(quadtree, intersects_node, 2, []),
-%%%     dbg:tpl(quadtree, within, 2, []),
-%%%     dbg:tpl(quadtree, corners, 1, []),
-%%%     dbg:tpl(quadtree, intersects_circle, 2, []),
+    %% dbg:tpl(quadtree, astar, 5, []),
+    %% dbg:tpl(quadtree, within_circle, 2, []),
+    %% dbg:tpl(quadtree, within_node, 2, []),
+    %% dbg:tpl(quadtree, intersects_node, 2, []),
+    %% dbg:tpl(quadtree, within, 2, []),
+    %% dbg:tpl(quadtree, corners, 1, []),
+    %% dbg:tpl(quadtree, intersects_circle, 2, []),
+
+    visualize:start(),
 
     {A,B,C} = erlang:now(),
     random:seed(A,B,C),
@@ -58,19 +61,18 @@ test() ->
 
     Path = astar(Tree,Start,Goal),
 
-    visualize_init(),
-    visualize(Tree,white),
-
     if
-        Path == failure -> ok;
+        Path == failure ->
+            ?LOG({"test: NO PATH found"}),
+            ok;
         true ->
-            SubGoal = next_subgoal(Path),
-            visualize(Path,yellow),
-            draw_oval(SubGoal,green)
+            ?LOG({"test: PATH found"}),
+            _ = next_subgoal(Path),
+            visualize(Path,yellow)
     end,
 
-    draw_oval(Start,blue),
-    draw_oval(Goal,orange),
+    visualizer ! {oval,Start,blue},
+    visualizer ! {oval,Goal,orange},
 
     ok.
 
@@ -78,18 +80,20 @@ test() ->
 random_point() ->
     {random:uniform(400)-200,random:uniform(400)-200}.
 
-transform({X,Y}) ->
-    %% {X+200,Y+200}.
-    {(X+200),
-     (-Y+200)}.
+
+
 
 next_subgoal([]) ->
     {{0,0},[]};
 next_subgoal([GoalNode]) ->
     ?LOG({"next_subgoal, final subgoal: ",{GoalNode#node.x,GoalNode#node.y}}),
+    visualizer ! {oval,{0,0},green},
     {{0,0},[]};
-next_subgoal([_,NextNode|Path]) ->
-    {{NextNode#node.x,NextNode#node.y},[NextNode|Path]}.
+next_subgoal([LastNode,NextNode|Path]) ->
+    NextGoal = {NextNode#node.x,NextNode#node.y},
+    visualizer ! {oval,{LastNode#node.x,LastNode#node.y},yellow},
+    visualizer ! {oval,NextGoal,green},
+    {NextGoal,[NextNode|Path]}.
     %% C1 = node_corners(CurNode),
     %% C2 = node_corners(NextNode),
     %% [P1,P2] =
@@ -111,23 +115,18 @@ next_subgoal([_,NextNode|Path]) ->
 astar(Tree,StartPoint,GoalPoint) ->
     StartNode = find_node(Tree,StartPoint),
     GoalNode = find_node(Tree,GoalPoint),
-    %% visualize(StartNode,blue),
-    %% visualize(GoalNode,orange),
     E = eq_node(StartNode,GoalNode),
     if
         E -> [StartNode];
         true -> astar(Tree,GoalPoint,GoalNode,[],[{StartNode,0,[]}])
     end.
-astar(Tree,_,_,_,[]) ->
-    visualize(Tree,white),
-    receive
-        impossible -> ok
-    end,
+astar(_,_,_,_,[]) ->
     failure;
 astar(Tree,GoalPoint,GoalNode,Closed,[{Node,CostSoFar,PathSoFar}|Open]) ->
     IsGoalReached = eq_node(Node,GoalNode),
     if
-        IsGoalReached -> lists:reverse([Node|PathSoFar]);
+        IsGoalReached ->
+            lists:reverse([Node|PathSoFar]);
         true ->
             OpenNeighbours =
                 lists:filter(
@@ -214,10 +213,12 @@ insert_circle(Node,Circle) ->
                                          new_children(Node)),
                               status=parent};
                         true ->
+                            visualize(Node,red),
                             Node#node{status=obstacle}
                     end
             end;
-        true -> Node
+        true ->
+            Node
     end.
 
 
@@ -362,15 +363,6 @@ new_children(Node) ->
 
 %%%%% graphics for demo / debugging purposes
 
-% call before anything else
-visualize_init() ->
-    I=gs:start(),
-    Win=gs:create(window, I,
-                  [{width, 1000},{height, 1000},
-                   {title,"quadtree visualization"},{map, true}]),
-    gs:create(canvas, can1,Win,
-              [{x,0},{y, 0},{width,1000},{height,1000}]).
-
 % visualize/2 takes a Node or list of Nodes and a color
 % will then recurse if necessary and draw it all
 visualize([],_) ->
@@ -387,29 +379,9 @@ visualize(Node,Color) ->
               end,
               Node#node.children);
         true ->
-            draw_node(Node,Color)
+            [X1,X2,_,_] = node_corners(Node),
+            visualizer ! {node,{X1,X2},Color}
     end.
-
-draw_node(Node,Color) ->
-    [{X1,Y1},{X2,Y2},_,_] = corners({Node#node.x,Node#node.y,Node#node.size}),
-    case Node#node.status of
-        obstacle -> Color1 = red;
-        empty -> Color1 = Color
-    end,
-    gs:create(rectangle,can1,
-              [{coords,
-                [transform({X1,Y1}),
-                 transform({X2,Y2})]},
-               {fill,Color1}]).
-
-draw_oval({X,Y},Color) ->
-    gs:create(oval,can1,
-              [{coords,
-                [transform({X-3,Y-3}),
-                 transform({X+3,Y+3})]},
-               {fill,Color}]).
-
-
 
 
 

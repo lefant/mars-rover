@@ -2,7 +2,7 @@
 -compile(export_all).
 %%-export([bench/0]).
 
--include("/home/lefant/shared/code/erlang/mars-rover/mtm.hrl").
+-include("/home/lefant/shared/code/erlang/mars-rover/world.hrl").
 -include("/home/lefant/shared/code/erlang/mars-rover/quadtree.hrl").
 
 %% -ifdef(debug).
@@ -16,25 +16,8 @@
 
 
 
-test_run() ->
-    quadtree:visualize_init(),
-    {ok, Socket} = gen_tcp:connect(localhost,17676,
-                                   [binary,
-                                    {packet, 0},
-                                    {nodelay, true}]),
-    ?LOG("connection to simulator successfully established"),
-    receive
-        {tcp,Socket,Bin} ->
-            {ok, Msg} = regexp:split(binary_to_list(Bin)," "),
-            World1 = parse_init_message(#world{},Msg),
-            visualize_world(World1),
-            receive_loop(Socket,World1);
-        {tcp_closed,Socket} ->
-            ok
-    end.
-
-
 run() ->
+    visualize:start(),
     connect_simulator(localhost,17676).
 
 connect_simulator(Host,Port) ->
@@ -47,7 +30,6 @@ connect_simulator(Host,Port) ->
         {tcp,Socket,Bin} ->
             {ok, Msg} = regexp:split(binary_to_list(Bin)," "),
             World1 = parse_init_message(#world{},Msg),
-            visualize_world(World1),
             receive_loop(Socket,World1);
         {tcp_closed,Socket} ->
             ok
@@ -65,7 +47,7 @@ receive_loop(Socket,World) ->
                           " "),
             World1 = parse_message(World#world{aliens=[]},Msg),
 
-            %% quadtree:draw_oval({World1#world.x,World1#world.y},blue),
+            visualizer ! {oval,{World1#world.x,World1#world.y},blue},
 
             Command = get_command(World1),
             gen_tcp:send(Socket,Command),
@@ -74,12 +56,6 @@ receive_loop(Socket,World) ->
             ok
     end.
 
-visualize_world(World) ->
-    ok.
-    %% quadtree:visualize(World#world.quadtree,white),
-    %% quadtree:visualize(World#world.path,yellow),
-    %% quadtree:draw_oval(World#world.goal,green),
-    %% ok.
 
 
 get_command(World) ->
@@ -276,8 +252,6 @@ parse_message(World,["T"|List]) ->
     if
         not E ->
             {SubGoal,Path} = quadtree:next_subgoal(World#world.path),
-            visualize_world(World),
-            %% quadtree:draw_oval(SubGoal,green),
             ok;
         true ->
             SubGoal = World#world.goal,
@@ -326,7 +300,6 @@ parse_message(World,Msg) ->
     World1 = World#world{
                path=Path
               },
-    visualize_world(World1),
     World1.
     %% throw({unknown_msg,World,Msg}).
 
@@ -415,7 +388,6 @@ update_quadtree(World,Circle) ->
                quadtree=QuadTree,
                path=Path
               },
-    %% visualize_world(World1),
     World1.
 
 
