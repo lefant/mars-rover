@@ -13,8 +13,7 @@ start({Host,Port},Parser) ->
                                    [binary,
                                     {packet, 0},
                                     {nodelay, true}]),
-    ?LOG("connection to simulator successfully established"),
-    %% Collector = spawn_link(socket,line_collector,[Parser,[]]),
+    ?LOG("socket: connection to simulator successfully established"),
     loop(Socket,Parser).
 
 loop(Socket,Parser) ->
@@ -38,27 +37,14 @@ loop(Socket,Parser) ->
                                       ?LOG({"socket: error splitting Msg",Msg,Error}),
                                       loop(Socket,Parser);
                                   {ok,List} ->
-                                      ?LOG({"socket: sending",List}),
+                                      %% ?LOG({"socket: sending",List}),
                                       Parser ! List
                               end
                       end,
                       MsgList2)
-            end;
+            end,
+            loop(Socket,Parser);
 
         {tcp_closed,Socket} ->
             ok
     end.
-
-%% line_collector(Parser,Acc) ->
-%%     receive
-%%         ';' ->
-%%             {ok, Msg} = regexp:split(
-%%                           lists:reverse(Acc),
-%%                           " "),
-%%             ?LOG({"socket: collector received ; ->send",Msg}),
-%%             Parser ! lists:reverse(Msg),
-%%             line_collector(Parser,[]);
-%%         C ->
-%%             ?LOG({"socket: collector received C",C}),
-%%             line_collector(Parser,[C|Acc])
-%%     end.

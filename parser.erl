@@ -17,6 +17,7 @@ test() ->
 start(Controller) ->
     receive
         Msg ->
+            ?LOG({"parser: at start: received msg",Msg}),
             World = parse_init_message(Msg),
             Controller ! {world_ready},
             loop(Controller,World)
@@ -25,15 +26,17 @@ start(Controller) ->
 loop(Controller,World) ->
     receive
         Msg ->
+            %% ?LOG({"parser: received msg",Msg}),
             World1 = parse_message(World,Msg),
             Controller ! {updated_world,World1},
             loop(Controller,World1)
     end.
 
 
+
 parse_init_message(["I"|List]) ->
     %% I dx dy time-limit min-sensor max-sensor max-speed max-turn max-hard-turn ;
-    [Width,Height,TimeLimit,MinSensor,MaxSensor,MaxSpeed,MaxTurn,MaxHardTurn,_] = List,
+    [Width,Height,TimeLimit,MinSensor,MaxSensor,MaxSpeed,MaxTurn,MaxHardTurn] = List,
 
     QuadTree = quadtree:new(trunc(str2num(Width)/2)),
 
