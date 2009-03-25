@@ -1,13 +1,7 @@
 -module(socket).
--export([start/2,test/0]).
+-export([start/2,test/0,line_collector/2]).
 
-%% -ifdef(debug).
-%% -define(LOG(Msg), io:format("{~p:~p}: ~p~n", [?MODULE, ?LINE, Msg])).
-%% -else.
-%% -define(LOG(Msg), true).
-%% -endif.
-
--define(LOG(Msg), io:format("{~p:~p}: ~p~n", [?MODULE, ?LINE, Msg])).
+-include("/home/lefant/shared/code/erlang/mars-rover/debug.hrl").
 
 
 test() ->
@@ -20,14 +14,24 @@ start({Host,Port},Parser) ->
                                     {packet, 0},
                                     {nodelay, true}]),
     ?LOG("connection to simulator successfully established"),
-    loop(Socket,Parser).
+    Collector = spawn_link(socket,line_collector,[Parser,[]]),
+    loop(Socket,Collector).
 
-loop(Socket,Parser) ->
+loop(Socket,Collector) ->
     receive
         {tcp,Socket,Bin} ->
             {ok, Msg} = regexp:split(binary_to_list(Bin)," "),
-            Parser ! Msg,
-            loop(Socket,Parser);
+            Collector ! Msg,
+            loop(Socket,Collector);
         {tcp_closed,Socket} ->
             ok
+    end.
+
+line_collector(Parser,Acc) ->
+    receive
+        ";" ->
+            Parser ! lists:reverse(Acc),
+            line_collector(Parser,[]);
+        C ->
+            line_collector(Parser,[C|Acc])
     end.

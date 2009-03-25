@@ -1,15 +1,8 @@
 -module(controller).
 -export([start/0,test/0]).
 
+-include("/home/lefant/shared/code/erlang/mars-rover/debug.hrl").
 -include("/home/lefant/shared/code/erlang/mars-rover/world.hrl").
-
-%% -ifdef(debug).
-%% -define(LOG(Msg), io:format("{~p:~p}: ~p~n", [?MODULE, ?LINE, Msg])).
-%% -else.
-%% -define(LOG(Msg), true).
-%% -endif.
-
--define(LOG(Msg), io:format("{~p:~p}: ~p~n", [?MODULE, ?LINE, Msg])).
 
 
 test() ->

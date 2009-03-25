@@ -2,14 +2,9 @@
 -compile(export_all).
 %%-export([bench/0]).
 
+-include("/home/lefant/shared/code/erlang/mars-rover/debug.hrl").
 -include("/home/lefant/shared/code/erlang/mars-rover/quadtree.hrl").
 
-%% -ifdef(debug).
-%% -define(LOG(Msg), io:format("{~p:~p}: ~p~n", [?MODULE, ?LINE, Msg])).
-%% -else.
-%% -define(LOG(Msg), true).
-%% -endif.
--define(LOG(Msg), io:format("{~p:~p}: ~p~n", [?MODULE, ?LINE, Msg])).
 
 -define(MINSIZE, 5).
 

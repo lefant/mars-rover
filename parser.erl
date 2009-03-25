@@ -2,16 +2,9 @@
 -compile(export_all).
 %%-export([bench/0]).
 
+-include("/home/lefant/shared/code/erlang/mars-rover/debug.hrl").
 -include("/home/lefant/shared/code/erlang/mars-rover/world.hrl").
 -include("/home/lefant/shared/code/erlang/mars-rover/quadtree.hrl").
-
-%% -ifdef(debug).
-%% -define(LOG(Msg), io:format("{~p:~p}: ~p~n", [?MODULE, ?LINE, Msg])).
-%% -else.
-%% -define(LOG(Msg), true).
-%% -endif.
-
--define(LOG(Msg), io:format("{~p:~p}: ~p~n", [?MODULE, ?LINE, Msg])).
 
 
 
@@ -22,23 +15,29 @@ test() ->
 
 
 start(Controller) ->
-    loop(Controller).
-
-loop(Controller) ->
     receive
-        Any ->
-            ?LOG({"parser loop: unknown msg",Any}),
-            loop(Controller)
+        Msg ->
+            World = parse_init_message(Msg),
+            Controller ! {world_ready},
+            loop(Controller,World)
+    end.
+
+loop(Controller,World) ->
+    receive
+        Msg ->
+            World1 = parse_message(World,Msg),
+            Controller ! {updated_world,World1},
+            loop(Controller,World1)
     end.
 
 
-parse_init_message(World,["I"|List]) ->
+parse_init_message(["I"|List]) ->
     %% I dx dy time-limit min-sensor max-sensor max-speed max-turn max-hard-turn ;
     [Width,Height,TimeLimit,MinSensor,MaxSensor,MaxSpeed,MaxTurn,MaxHardTurn,_] = List,
 
     QuadTree = quadtree:new(trunc(str2num(Width)/2)),
 
-    World#world{
+    #world{
       width=str2num(Width),
       height=str2num(Height),
       timelimit=str2num(TimeLimit),
@@ -171,13 +170,10 @@ parse_object_list(World,[Type,X1,Y1,R1|Rest]) ->
             %%parse_object_list(World#world{home={X,Y,R}},Rest)
             parse_object_list(World,Rest);
         Crap ->
-            io:format("parse_object_list: received inner crap ~p~n",[Crap]),
-            World
+            throw({"parse_object_list: received inner crap ~p~n",Crap})
     end;
-
-parse_object_list(World,[Crap]) ->
-    io:format("parse_object_list: received outer crap ~p~n",[Crap]),
-    World.
+parse_object_list(_,[Crap]) ->
+    throw({"parse_object_list: received outer crap ~p~n",Crap}).
 
 
 
