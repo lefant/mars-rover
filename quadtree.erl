@@ -385,9 +385,12 @@ visualize(Node,Color) ->
               Node#quadtree.children);
         true ->
             [X1,X2,_,_] = node_corners(Node),
-            visualizer ! {node,{X1,X2},Color}
+            case Node#quadtree.status of
+                obstacle -> Color1 = red;
+                empty -> Color1 = Color
+            end,
+            visualizer ! {node,{X1,X2},Color1}
     end.
-
 
 
 
