@@ -49,8 +49,6 @@ start() ->
                     gs:create(canvas, can1,Win,
                               [{x,0},{y, 0},{width,1000},{height,1000}]),
 
-                    draw_oval( {0,0}, green ),
-
                     % main loop
                     loop()
             end),
