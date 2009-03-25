@@ -21,8 +21,15 @@ test() ->
     ok.
 
 
-start() ->
-    ok.
+start(Controller) ->
+    loop(Controller).
+
+loop(Controller) ->
+    receive
+        Any ->
+            ?LOG({"parser loop: unknown msg",Any}),
+            loop(Controller)
+    end.
 
 
 parse_init_message(World,["I"|List]) ->
