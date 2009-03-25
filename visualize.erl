@@ -63,7 +63,11 @@ loop() ->
     receive
         {oval,Point,Color} ->
             %% ?LOG({"visualize loop: oval",Point,Color}),
-            draw_oval(Point,Color),
+            draw_oval(Point,Color,3),
+            loop();
+        {oval,Point,Color,R} ->
+            %% ?LOG({"visualize loop: oval",Point,Color}),
+            draw_oval(Point,Color,R),
             loop();
         {node,Points,Color} ->
             %% ?LOG({"visualize loop: node",Points,Color}),
@@ -88,11 +92,11 @@ draw_rect({{X1,Y1},{X2,Y2}},Color) ->
                  transform({X2,Y2})]},
                {fill,Color}]).
 
-draw_oval({X,Y},Color) ->
+draw_oval({X,Y},Color,R) ->
     gs:create(oval,can1,
               [{coords,
-                [transform({X-3,Y-3}),
-                 transform({X+3,Y+3})]},
+                [transform({X-R,Y-R}),
+                 transform({X+R,Y+R})]},
                {fill,Color}]),
     ok.
 
