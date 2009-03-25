@@ -47,7 +47,7 @@ receive_loop(Socket,World) ->
                           " "),
             World1 = parser:parse_message(World#world{aliens=[]},Msg),
  
-            visualizer ! {oval,{World1#world.x,World1#world.y},blue},
+            visualizer ! {oval,{World1#world.x,World1#world.y},blue,1},
 
             Command = get_command(World1),
             gen_tcp:send(Socket,Command),
