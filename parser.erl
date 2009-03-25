@@ -23,52 +23,11 @@ test() ->
 
 
 
-run() ->
-    connect_simulator(localhost,17676).
-
-connect_simulator(Host,Port) ->
-    {ok, Socket} = gen_tcp:connect(Host,Port,
-                                   [binary,
-                                    {packet, 0},
-                                    {nodelay, true}]),
-    ?LOG("connection to simulator successfully established"),
-    receive
-        {tcp,Socket,Bin} ->
-            {ok, Msg} = regexp:split(binary_to_list(Bin)," "),
-            World1 = parse_init_message(#world{},Msg),
-            receive_loop(Socket,World1);
-        {tcp_closed,Socket} ->
-            ok
-    end.
-
-receive_loop(Socket,World) ->
-    receive
-        {tcp,Socket,Bin} ->
-            {ok, MsgList} = regexp:split(binary_to_list(Bin),";"),
-            {ok, Msg} = regexp:split(
-                          lists:last(
-                            lists:filter(
-                              fun(Item) -> not (Item == []) end,
-                              MsgList)),
-                          " "),
-            World1 = parse_message(World#world{aliens=[]},Msg),
-
-            receive_loop(Socket,World1);
-        {tcp_closed,Socket} ->
-            ok
-    end.
-
-
-
 parse_init_message(World,["I"|List]) ->
     %% I dx dy time-limit min-sensor max-sensor max-speed max-turn max-hard-turn ;
     [Width,Height,TimeLimit,MinSensor,MaxSensor,MaxSpeed,MaxTurn,MaxHardTurn,_] = List,
 
-    QuadTree = #quadtree{
-      x=0,
-      y=0,
-      size=trunc(str2num(Width)/2)
-     },
+    QuadTree = quadtree:new(trunc(str2num(Width)/2)),
 
     World#world{
       width=str2num(Width),
