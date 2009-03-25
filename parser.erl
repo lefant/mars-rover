@@ -51,7 +51,9 @@ parse_message(World,["T"|List]) ->
     E = quadtree:eq_node(CurNode,World#world.curnode),
     if
         not E ->
+            visualizer ! {oval,World#world.goal,yellow},
             {SubGoal,Path} = quadtree:next_subgoal(World#world.path),
+            visualizer ! {oval,SubGoal,green},
             ok;
         true ->
             SubGoal = World#world.goal,
@@ -70,6 +72,7 @@ parse_message(World,["T"|List]) ->
                path=Path
               },
     parse_object_list(World1,ObjectList);
+
 
 parse_message(World,["E",Time,Score]) ->
     io:format("EVENT: end of round: time: ~p score: ~p~n",[Time,Score]),
@@ -103,12 +106,7 @@ parse_message(World,Msg) ->
     throw({unknown_msg,World,Msg}).
 
 
-sanitize_dir(Dir) ->
-    if
-        Dir < 0 -> ((Dir+360)/180)*math:pi();
-        Dir >= 360 -> ((Dir-360)/180)*math:pi();
-        true -> (Dir/180)*math:pi()
-    end.
+
 
 parse_object_list(World,[]) ->
     World;
@@ -174,6 +172,8 @@ parse_object_list(World,[Crap]) ->
 
 
 
+
+
 update_quadtree(World,Circle) -> 
     QuadTree =
         quadtree:insert_circle(
@@ -191,6 +191,14 @@ update_quadtree(World,Circle) ->
 
 
 
+
 str2num(Str) ->
     {Num,_} = string:to_float(Str),
     Num.
+
+sanitize_dir(Dir) ->
+    if
+        Dir < 0 -> ((Dir+360)/180)*math:pi();
+        Dir >= 360 -> ((Dir-360)/180)*math:pi();
+        true -> (Dir/180)*math:pi()
+    end.

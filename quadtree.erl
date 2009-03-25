@@ -101,7 +101,6 @@ next_subgoal([]) ->
     {{0,0},[]};
 next_subgoal([GoalNode]) ->
     ?LOG({"next_subgoal, final subgoal: ",{GoalNode#quadtree.x,GoalNode#quadtree.y}}),
-    visualizer ! {oval,{0,0},green},
     {{0,0},[]};
 next_subgoal([LastNode,NextNode]) ->
     next_subgoal([LastNode,NextNode,#quadtree{x=0,y=0,size=20}]);
@@ -112,7 +111,6 @@ next_subgoal([LastNode,CurNode,NextNode|Path]) ->
         nodes_touching(LastNode,CurNode),
         nodes_touching(CurNode,NextNode)),
 
-    visualizer ! {oval,NextGoal,green},
     {NextGoal,[NextNode|Path]}.
 
 
