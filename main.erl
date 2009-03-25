@@ -12,16 +12,16 @@
 
 run() ->
     visualize:start(),
-    ?LOG({"main: visualize started"}),
+    ?LOG({"main: visualize server started"}),
 
     Controller = spawn_link(controller,start,[]),
-    ?LOG({"main: controller spawned"}),
+    ?LOG({"main: controller server spawned",Controller}),
 
     Parser = spawn_link(parser,start,[Controller]),
-    ?LOG({"main: parser spawned"}),
+    ?LOG({"main: parser server spawned",Parser}),
 
     Socket = spawn_link(socket,start,[{"localhost",17676},Parser]),
-    ?LOG({"main: socket spawned"}),
+    ?LOG({"main: socket server spawned",Socket}),
 
     Socket,
     ok.
