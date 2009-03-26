@@ -2,9 +2,9 @@
 -compile(export_all).
 %%-export([bench/0]).
 
--include("/home/lefant/shared/code/erlang/mars-rover/debug.hrl").
--include("/home/lefant/shared/code/erlang/mars-rover/world.hrl").
--include("/home/lefant/shared/code/erlang/mars-rover/quadtree.hrl").
+-include("../include/debug.hrl").
+-include("../include/world.hrl").
+-include("../include/quadtree.hrl").
 
 
 
@@ -14,22 +14,22 @@ test() ->
     ok.
 
 
-start(Controller) ->
+start(Controller,Pathfind,Steer) ->
     receive
         Msg ->
             ?LOG({"parser: at start: received msg",Msg}),
             World = parse_init_message(Msg),
             Controller ! {world_ready},
-            loop(Controller,World)
+            loop(Controller,Pathfind,Steer,World)
     end.
 
-loop(Controller,World) ->
+loop(Controller,Pathfind,Steer,World) ->
     receive
         Msg ->
             %% ?LOG({"parser: received msg",Msg}),
             World1 = parse_message(World,Msg),
             Controller ! {updated_world,World1},
-            loop(Controller,World1)
+            loop(Controller,Pathfind,Steer,World1)
     end.
 
 

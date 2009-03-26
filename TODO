@@ -1,0 +1,13 @@
+
+
+* proper controller hierarchy
+
+
+* quadtree astar should use a list of goalnodes
+   (home is a circle not  a point)
+
+
+* steering / speed control:
+   deviation to distance ratio should be about 1/5 or below when
+   accelerating
+

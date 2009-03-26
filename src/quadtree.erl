@@ -2,16 +2,15 @@
 -compile(export_all).
 %%-export([bench/0]).
 
--include("/home/lefant/shared/code/erlang/mars-rover/debug.hrl").
--include("/home/lefant/shared/code/erlang/mars-rover/quadtree.hrl").
-
-
--define(MINSIZE, 5).
+-include("../include/debug.hrl").
+-include("../include/quadtree.hrl").
 
 
 
 
 test() ->
+    test_intersects(),
+
     ?LOG("Debug is enabled"),
 
     %% dbg:tracer(),

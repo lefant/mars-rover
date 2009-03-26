@@ -2,8 +2,8 @@
 -compile(export_all).
 %%-export([bench/0]).
 
--include("/home/lefant/shared/code/erlang/mars-rover/world.hrl").
--include("/home/lefant/shared/code/erlang/mars-rover/quadtree.hrl").
+-include("../include/world.hrl").
+-include("../include/quadtree.hrl").
 
 %% -ifdef(debug).
 %% -define(LOG(Msg), io:format("{~p:~p}: ~p~n", [?MODULE, ?LINE, Msg])).

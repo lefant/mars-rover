@@ -5,3 +5,5 @@
           children=undefined,
           status=empty
 }).
+
+-define(MINSIZE, 5).

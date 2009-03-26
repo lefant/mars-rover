@@ -2,13 +2,25 @@
 -compile(export_all).
 %%-export([bench/0]).
 
--include("/home/lefant/shared/code/erlang/mars-rover/debug.hrl").
--include("/home/lefant/shared/code/erlang/mars-rover/world.hrl").
+-include("../include/debug.hrl").
+-include("../include/world.hrl").
 
 
 test() ->
     test_pov_funcs(),
     ok.
+
+
+start(Controller,Pathfind) ->
+    loop(Controller,Pathfind),
+    ok.
+
+loop(Controller,Pathfind) ->
+    receive
+        Any ->
+            ?LOG({"steer loop: unknown msg",Any}),
+            loop(Controller,Pathfind)
+    end.
 
 
 

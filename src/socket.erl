@@ -1,7 +1,7 @@
 -module(socket).
 -export([start/2,test/0]).
 
--include("/home/lefant/shared/code/erlang/mars-rover/debug.hrl").
+-include("../include/debug.hrl").
 
 
 test() ->
