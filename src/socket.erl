@@ -45,6 +45,9 @@ loop(Socket, Parser) ->
             end,
             loop(Socket, Parser);
 
+        {send, Command} ->
+            gen_tcp:send(Socket, Command);
+
         {tcp_closed, Socket} ->
             ok
     end.

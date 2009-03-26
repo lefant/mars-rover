@@ -2,7 +2,7 @@
 -export([start/0,test/0]).
 
 -include("../include/debug.hrl").
--include("../include/world.hrl").
+-include("../include/rover.hrl").
 
 
 test() ->
@@ -13,17 +13,20 @@ test() ->
 start() ->
     receive
         {start, {Controller, Pathfind}} ->
-            loop(Controller, Pathfind)
+            loop(Controller, Pathfind, {0,0})
     end.
 
-loop(Controller, Pathfind) ->
+loop(Controller, Pathfind, Goal) ->
     receive
+        {rover,Rover} ->
+            Controller ! {command,get_command(Rover,Goal)},
+            loop(Controller, Pathfind, Goal);
+        {goal, Goal1} ->
+            loop(Controller, Pathfind, Goal1);
         Any ->
             ?LOG({"steer loop: unknown msg", Any}),
-            loop(Controller, Pathfind)
+            loop(Controller, Pathfind, Goal)
     end.
-
-
 
 
 
@@ -51,26 +54,28 @@ loop(Controller, Pathfind) ->
 
 
 
-get_command(World) ->
-    {SpeedStyle,DiffTurn} = desired_dir(World),
+get_command(Rover,Goal) ->
+    {SpeedStyle,DiffTurn} = desired_dir(Rover,Goal),
     Turn = correct_turn(
-             World#world.turn,
+             Rover#rover.turn,
              turn_goal(DiffTurn)),
     Accel = correct_accel(
-              World#world.accel,
+              Rover#rover.accel,
               accel_goal(
-                World#world.speed,
-                World#world.maxspeed,
+                Rover#rover.speed,
+                %% FIXME: should get this via message from main on bootup
+                20,
                 SpeedStyle)),
     list_to_binary(string:join([Accel,Turn,";"],"")).
 
 
-desired_dir(World) ->
+desired_dir(Rover,Goal) ->
     {Vx,Vy} =
         coords_to_pov(
-          World#world.x,World#world.y,
-          -World#world.dir,
-          World#world.goal),
+          Rover#rover.x,
+          Rover#rover.y,
+          -Rover#rover.dir,
+          Goal),
 
     if
         Vx < 0 ->
@@ -83,8 +88,8 @@ desired_dir(World) ->
     end,
 
     if
-        Vy1/Vx < 0 -> Speed = slow;
-        Vx > 2*Vy1 -> Speed = fast;
+        Vx < 7*Vy1 -> Speed = slow;
+        Vx > 7*Vy1 -> Speed = fast;
         true -> Speed = normal
     end,
     {Speed,Vy1}.

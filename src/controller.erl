@@ -13,6 +13,8 @@ start() ->
 
 loop(Socket, Steer, Pathfind) ->
     receive
+        {command, Command} ->
+            Socket ! {send, Command};
         Any ->
             ?LOG({"controller loop: unknown msg",Any}),
             loop(Socket, Steer, Pathfind)

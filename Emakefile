@@ -8,4 +8,3 @@
 {'src/socket.erl', [{outdir, "ebin"}]}.
 {'src/steer.erl', [{outdir, "ebin"}]}.
 {'src/visualize.erl', [{outdir, "ebin"}]}.
-
