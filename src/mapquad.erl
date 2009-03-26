@@ -16,6 +16,8 @@ loop(Pathfind, QuadTree) ->
                 quadtree:insert_circle(
                   QuadTree,
                   Item),
+            %% FIXME: we should only send an update to Pathfind
+            %% if the quad actually changed here
             Pathfind ! {quadtree, QuadTree1},
             loop(Pathfind, QuadTree1);
         Any ->

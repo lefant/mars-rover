@@ -1,30 +1,39 @@
 -module(quadtree).
--compile(export_all).
-%%-export([bench/0]).
+-export([test/0,new/1,find_node/2,eq_node/2]).
 
 -include("../include/debug.hrl").
 -include("../include/quadtree.hrl").
 
 
 
-
 test() ->
     test_intersects(),
 
-    ?LOG("Debug is enabled"),
-
-    %% dbg:tracer(),
-    %% dbg:p(all, call),
-
-    %% dbg:tpl(quadtree, astar, 5, []),
-    %% dbg:tpl(quadtree, within_circle, 2, []),
-    %% dbg:tpl(quadtree, within_node, 2, []),
-    %% dbg:tpl(quadtree, intersects_node, 2, []),
-    %% dbg:tpl(quadtree, corners, 1, []),
-    %% dbg:tpl(quadtree, intersects_circle, 2, []),
-
     visualize:start(),
 
+    {Tree,Start,Goal} = gen_testquad(),
+
+    %% visualize(Tree,white),
+
+    Path = astar(Tree,Start,Goal),
+
+    if
+        Path == failure ->
+            ?LOG({"test: NO PATH found"}),
+            ok;
+        true ->
+            ?LOG({"test: PATH found"}),
+            quadtree:visualize(Path,yellow),
+            _ = next_subgoal(Path)
+    end,
+
+    visualizer ! {oval,Start,blue},
+    visualizer ! {oval,Goal,orange},
+
+    ok.
+
+
+gen_testquad() ->
     {A,B,C} = erlang:now(),
     random:seed(A,B,C),
 
@@ -58,27 +67,12 @@ test() ->
         QuadTree,
         ListOfCircles),
 
-
-    Path = astar(Tree,Start,Goal),
-
-    if
-        Path == failure ->
-            ?LOG({"test: NO PATH found"}),
-            ok;
-        true ->
-            ?LOG({"test: PATH found"}),
-            visualize(Path,yellow),
-            _ = next_subgoal(Path)
-    end,
-
-    visualizer ! {oval,Start,blue},
-    visualizer ! {oval,Goal,orange},
-
-    ok.
-
+    {Tree,Start,Goal}.
 
 random_point() ->
     {random:uniform(400)-200,random:uniform(400)-200}.
+
+
 
 
 
@@ -88,6 +82,9 @@ new(Size) ->
      y=0,
      size=Size
     }.
+
+
+
 
 
 
@@ -184,6 +181,7 @@ astar(Tree,GoalPoint,GoalNode,Closed,[{Node,CostSoFar,PathSoFar}|Open]) ->
 
 
 
+
 insert_circle(Node,Circle) ->
     I = intersects_circle(Node,Circle),
     if
@@ -219,19 +217,6 @@ insert_circle(Node,Circle) ->
     end.
 
 
-walk_tree(Node) ->
-    if
-        is_list(Node#quadtree.children) ->
-            io:format("~p ~p~n", [string:copies(" ",50-trunc(2*Node#quadtree.size)),{Node#quadtree.x,Node#quadtree.y}]),
-            lists:map(
-              fun(ChildNode) ->
-                      walk_tree(ChildNode)
-              end,
-              Node#quadtree.children);
-        true ->
-            io:format("~p ~p~n", [string:copies(" ",50-trunc(2*Node#quadtree.size)),{Node#quadtree.x,Node#quadtree.y}])
-    end.
-
 find_node(Node,{X,Y}) ->
     %% io:format("find_node: ~p ~p~n", [string:copies(" ",50-trunc(2*Node#quadtree.size)),{Node#quadtree.x,Node#quadtree.y}]),
     if
@@ -246,22 +231,6 @@ find_node(Node,{X,Y}) ->
         true -> 
             %% ?LOG({"find_node: leafnode"}),
             Node
-    end.
-
-find_parent(Node,Leaf) ->
-    if
-        is_list(Node#quadtree.children) ->
-            [MyChild] = lists:filter(
-              fun(ChildNode) ->
-                      within_node(ChildNode,{Leaf#quadtree.x,Leaf#quadtree.y})
-              end,
-              Node#quadtree.children),
-            if
-                is_list(MyChild#quadtree.children) ->
-                    find_parent(MyChild,Leaf);
-                true -> Node
-            end;
-        true -> throw(empty_tree)
     end.
 
 
@@ -620,4 +589,37 @@ test_intersects() ->
              #quadtree{x=0,y=0,size=10},
              #quadtree{x=19,y=19,size=10}),
     ok.
+
+
+
+
+
+%% walk_tree(Node) ->
+%%     if
+%%         is_list(Node#quadtree.children) ->
+%%             io:format("~p ~p~n", [string:copies(" ",50-trunc(2*Node#quadtree.size)),{Node#quadtree.x,Node#quadtree.y}]),
+%%             lists:map(
+%%               fun(ChildNode) ->
+%%                       walk_tree(ChildNode)
+%%               end,
+%%               Node#quadtree.children);
+%%         true ->
+%%             io:format("~p ~p~n", [string:copies(" ",50-trunc(2*Node#quadtree.size)),{Node#quadtree.x,Node#quadtree.y}])
+%%     end.
+
+%% find_parent(Node,Leaf) ->
+%%     if
+%%         is_list(Node#quadtree.children) ->
+%%             [MyChild] = lists:filter(
+%%               fun(ChildNode) ->
+%%                       within_node(ChildNode,{Leaf#quadtree.x,Leaf#quadtree.y})
+%%               end,
+%%               Node#quadtree.children),
+%%             if
+%%                 is_list(MyChild#quadtree.children) ->
+%%                     find_parent(MyChild,Leaf);
+%%                 true -> Node
+%%             end;
+%%         true -> throw(empty_tree)
+%%     end.
 
