@@ -1,6 +1,5 @@
 -module(parser).
--compile(export_all).
-%%-export([bench/0]).
+-export([test/0,start/3]).
 
 -include("../include/debug.hrl").
 -include("../include/world.hrl").

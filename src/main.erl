@@ -1,13 +1,6 @@
 -module(main).
--compile(export_all).
-%%-export([bench/0]).
-
+-export([run/0]).
 -include("../include/debug.hrl").
--include("../include/world.hrl").
--include("../include/quadtree.hrl").
-
-
-
 
 
 run() ->
@@ -23,8 +16,10 @@ run() ->
     Steer = spawn_link(steer,start,[Controller,Pathfind]),
     ?LOG({"main: steer server spawned",Steer}),
 
+    Map = spawn_link(map,start,[Pathfind,Steer]),
+    ?LOG({"main: map server spawned",Map}),
 
-    Parser = spawn_link(parser,start,[Controller,Pathfind,Steer]),
+    Parser = spawn_link(parser,start,[Controller,Map]),
     ?LOG({"main: parser server spawned",Parser}),
 
     Socket = spawn_link(socket,start,[{"localhost",17676},Parser]),
