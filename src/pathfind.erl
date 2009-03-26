@@ -12,10 +12,7 @@ test() ->
     Pathfind = spawn_link(pathfind, start, []),
     ?LOG({"pathfind server spawned", Pathfind}),
 
-    Pathfind ! {start, Start},
-    Pathfind ! {goal, Goal},
     Pathfind ! {quadtree, Tree},
-    Pathfind ! {path, self()},
 
     receive
         {Pathfind, {path, Path}} ->
@@ -38,42 +35,56 @@ test() ->
 
 start() ->
     receive
-        {start, {Steer}} ->
+        {start, {Steer, Home}} ->
             ?LOG({"pathfind started, waiting for initial quadtree"}),
             receive
                 {quadtree, QuadTree} ->
-                    ?LOG({"pathfind entering main loop"}),
-                    loop(Steer, QuadTree, [])
+                    ?LOG({"pathfind received initial quad, waiting for initial pos"}),
+                    receive
+                        {pos,Pos} ->
+                            self() ! {newpath},
+                            ?LOG({"pathfind entering main loop"}),
+                            loop(Steer, Home, QuadTree, [], Pos)
+                    end
             end
     end.
 
-loop(Steer, QuadTree, Path) ->
+loop(Steer, Home, QuadTree, Path, Pos) ->
     receive
-        {nextgoal} ->
-            case Path of
-                [] ->
-                    Steer ! {goal, {0,0}},
-                    loop(Steer, QuadTree, []);
-                [_] ->
-                    Steer ! {goal, {0,0}},
-                    loop(Steer, QuadTree, []);
-                _ ->
-                    {Goal, Path1} = quadtree:next_subgoal(Path),
-                    Steer ! {goal, Goal},
-                    loop(Steer, QuadTree, Path1)
-            end;
-        {newpath, {start, Start}, {goal, Goal}} ->
+        {pos, Pos1} ->
+
+            %% FIXME should detect if we have reached the next node and send new nextgoal here
+
+            loop(Steer, Home, QuadTree, Path, Pos1);
+        {newpath} ->
             Path1 = quadtree:astar(
                       QuadTree,
-                      Start,
-                      Goal),
-            loop(Steer, QuadTree, Path1);
+                      Pos,
+                      Home),
+            ?LOG({"pathfind case dispatch",Path}),
+            case Path1 of
+                [] ->
+                    {X,Y,_} = Home,
+                    Goal = {X,Y},
+                    Path2 = [];
+                [_] ->
+                    {X,Y,_} = Home,
+                    Goal = {X,Y},
+                    Path2 = [];
+                _ ->
+                    {Goal, Path2} = quadtree:next_subgoal(Path1)
+            end,
+            ?LOG({"pathfind done, send goal",Goal}),
+            Steer ! {goal, Goal},
+            loop(Steer, Home, QuadTree, Path2, Pos);
         {quadtree, QuadTree1} ->
-            ?LOG({"pathfind loop: quadtree event unhandled (should compute new path and send updated subgoal to steer"}),
-            loop(Steer, QuadTree1, Path);
+            %% ?LOG({"pathfind loop: quadtree event unhandled (should compute new path and send updated subgoal to steer (but need Start point to do so"}),
+            self() ! {newpath},
+            loop(Steer, Home, QuadTree1, Path, Pos);
         Any ->
             ?LOG({"pathfind loop: unknown msg", Any}),
-            loop(Steer, QuadTree, Path)
+            loop(Steer, Home, QuadTree, Path, Pos)
     end.
 
+    
 

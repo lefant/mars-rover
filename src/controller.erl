@@ -16,7 +16,8 @@ loop(Socket, Steer, Pathfind) ->
     receive
         {command, Command} ->
             %% ?LOG({"controller:loop passing on", Command}),
-            Socket ! {send, Command};
+            Socket ! {send, Command},
+            loop(Socket, Steer, Pathfind);
         Any ->
             ?LOG({"controller loop: unknown msg",Any}),
             loop(Socket, Steer, Pathfind)

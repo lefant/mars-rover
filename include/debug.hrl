@@ -10,4 +10,4 @@
 
 %% dbg:tracer(),
 %% dbg:p(all, call),
-%% dbg:tpl(quadtree, astar, 5, []),
+%% dbg:tpl(quadtree, find_node, 2, []),

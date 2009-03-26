@@ -1,9 +1,10 @@
 -module(quadtree).
--export([test/0,new/1,find_node/2,eq_node/2]).
+-export([test/0,new/1,insert_circle/2,next_subgoal/1,astar/3,find_node/2,eq_node/2]).
 
 -include("../include/debug.hrl").
 -include("../include/quadtree.hrl").
 
+%% -define(MINSIZE, 5).
 
 
 test() ->
@@ -15,7 +16,8 @@ test() ->
 
     %% visualize(Tree,white),
 
-    Path = astar(Tree,Start,Goal),
+    {X,Y} = Goal,
+    Path = astar(Tree,Start,{X,Y,5}),
 
     if
         Path == failure ->
@@ -23,12 +25,15 @@ test() ->
             ok;
         true ->
             ?LOG({"test: PATH found"}),
-            quadtree:visualize(Path,yellow),
+            visualize(Path,yellow),
             _ = next_subgoal(Path)
     end,
 
     visualizer ! {oval,Start,blue},
     visualizer ! {oval,Goal,orange},
+
+    HomeNodes = home_nodes(Tree,{0,0,5}),
+    visualize(HomeNodes,green),
 
     ok.
 
@@ -106,9 +111,15 @@ next_subgoal([LastNode,CurNode,NextNode|Path]) ->
 
 
 
-astar(Tree,StartPoint,GoalPoint) ->
+astar(Tree,StartPoint,Home) ->
+    {X,Y,_} = Home,
+    GoalPoint = {X,Y},
     StartNode = find_node(Tree,StartPoint),
-    GoalNode = find_node(Tree,GoalPoint),
+
+    %% GoalNode = find_node(Tree,GoalPoint),
+    GoalNodes = home_nodes(Tree,Home),
+    [GoalNode|_] = GoalNodes,
+
     E = eq_node(StartNode,GoalNode),
     if
         E -> [StartNode];
@@ -232,6 +243,24 @@ find_node(Node,{X,Y}) ->
             %% ?LOG({"find_node: leafnode"}),
             Node
     end.
+
+home_nodes(Node,Circle) ->
+    if
+        is_list(Node#quadtree.children) ->
+            lists:flatmap(
+              fun(ChildNode) ->
+                      home_nodes(ChildNode,Circle)
+              end,
+              Node#quadtree.children);
+        true ->
+            I = intersects_circle(Node,Circle),
+            if
+                I -> [Node];
+                true -> []
+            end
+    end.
+
+
 
 
 
@@ -594,18 +623,6 @@ test_intersects() ->
 
 
 
-%% walk_tree(Node) ->
-%%     if
-%%         is_list(Node#quadtree.children) ->
-%%             io:format("~p ~p~n", [string:copies(" ",50-trunc(2*Node#quadtree.size)),{Node#quadtree.x,Node#quadtree.y}]),
-%%             lists:map(
-%%               fun(ChildNode) ->
-%%                       walk_tree(ChildNode)
-%%               end,
-%%               Node#quadtree.children);
-%%         true ->
-%%             io:format("~p ~p~n", [string:copies(" ",50-trunc(2*Node#quadtree.size)),{Node#quadtree.x,Node#quadtree.y}])
-%%     end.
 
 %% find_parent(Node,Leaf) ->
 %%     if

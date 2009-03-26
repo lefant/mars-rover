@@ -31,7 +31,7 @@ run() ->
 
 
     Socket ! {start, {Parser}},
-    Parser ! {start, {Main, Controller, Steer, Map}},
+    Parser ! {start, {Main, Controller, Steer, Map, Pathfind}},
 
     receive
         {world,World} ->
@@ -42,7 +42,9 @@ run() ->
     Map ! {start, {MapQuad, Steer}},
     MapQuad ! {start, {Pathfind, World#world.width}},
 
-    Pathfind ! {start,{Steer}},
+    %% Home = World#world.home,
+    Home = {0,0,5},
+    Pathfind ! {start,{Steer,Home}},
 
     Steer ! {start, {Controller, Pathfind}},
 

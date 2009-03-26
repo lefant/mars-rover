@@ -2,13 +2,13 @@
 -export([start/0]).
 
 -include("../include/debug.hrl").
--include("../include/quadtree.hrl").
 
 
 start() ->
     receive
         {start, {Pathfind, WorldSize}} ->
             QuadTree = quadtree:new(trunc(WorldSize/2)),
+            Pathfind ! {quadtree, QuadTree},
             ?LOG({"mapquad entering main loop"}),
             loop(Pathfind, QuadTree)
     end.

@@ -9,7 +9,7 @@
 
 start() ->
     receive
-        {start, {Main, Controller, Steer, Map}} ->
+        {start, {Main, Controller, Steer, Map, Pathfind}} ->
             receive
                 ["I"|List] ->
                     ?LOG({"parser:start received init message", List}),
@@ -30,17 +30,17 @@ start() ->
                     Main ! {world, World},
 
                     ?LOG({"parser entering main loop"}),
-                    loop(Controller, Steer, Map)
+                    loop(Controller, Steer, Map, Pathfind)
             end
     end.
 
 
-loop(Controller, Steer, Map) ->
+loop(Controller, Steer, Map, Pathfind) ->
     receive
         ["T"|List] ->
             %% ?LOG({"parser:loop T message received",List}),
             parse_map(Map,
-                      parse_rover(Steer, List));
+                      parse_rover(Steer, Pathfind, List));
         ["B", _] ->
             Controller ! {bump, boulder};
         ["C", _] ->
@@ -54,25 +54,28 @@ loop(Controller, Steer, Map) ->
         Any ->
             ?LOG({"parser:loop received unknown message", Any})
     end,
-    loop(Controller, Steer, Map).
+    loop(Controller, Steer, Map, Pathfind).
 
 
 
 
-parse_rover(Steer, List) ->
+parse_rover(Steer, Pathfind, List) ->
     %% T time-stamp vehicle-ctl vehicle-x vehicle-y vehicle-dir vehicle-speed objects ;
     [_,VehicleCtl,VehicleX,VehicleY,VehicleDir,VehicleSpeed|ObjectList] = List,
+    X = str2num(VehicleX),
+    Y = str2num(VehicleY),
 
     Rover = #rover{
       turn=string:substr(VehicleCtl, 2),
       accel=string:left(VehicleCtl, 1),
-      x=str2num(VehicleX),
-      y=str2num(VehicleY),
+      x=X,
+      y=Y,
       dir=(sanitize_dir(str2num(VehicleDir))),
       speed=str2num(VehicleSpeed)
      },
 
     Steer ! {rover, Rover},
+    Pathfind ! {pos, {X,Y}},
 
     ObjectList.
 
@@ -101,7 +104,8 @@ parse_map(Map, [Type, X1, Y1, R1|Rest]) ->
         "c" ->
             Map ! {crater,{X, Y, R}};
         "h" ->
-            ?LOG({"parser:parse_map seeing home, ignoring",{X, Y, R}});
+            %% ?LOG({"parser:parse_map seeing home, ignoring",{X, Y, R}});
+            ok;
         Any ->
             throw({"parser:parse_map garbage object type", Any})
     end,

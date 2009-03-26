@@ -13,22 +13,35 @@ test() ->
 start() ->
     receive
         {start, {Controller, Pathfind}} ->
-            ?LOG({"steer entering main loop"}),
-            loop(Controller, Pathfind, {0,0})
+            ?LOG({"steer started, waiting for initial rover message"}),
+            receive
+                {rover, Rover} ->
+                    ?LOG({"steer waiting for initial goal"}),
+                    receive
+                        {goal, Goal} ->
+                            Command = get_command(Rover, Goal),
+                            Controller ! {command, Command}
+                    end,
+                    ?LOG({"steer entering main loop"}),
+                    loop(Controller, Pathfind, Rover, Goal)
+            end
     end.
 
-loop(Controller, Pathfind, Goal) ->
+loop(Controller, Pathfind, Rover, Goal) ->
     receive
-        {rover, Rover} ->
+        {rover, Rover1} ->
             %% ?LOG({"steer:loop received rover", Rover}),
-            Command = get_command(Rover, Goal),
+            Command = get_command(Rover1, Goal),
             Controller ! {command, Command},
-            loop(Controller, Pathfind, Goal);
+            loop(Controller, Pathfind, Rover1, Goal);
         {goal, Goal1} ->
-            loop(Controller, Pathfind, Goal1);
+            ?LOG({"steer:loop new goal:", Goal1}),
+            Command = get_command(Rover, Goal1),
+            Controller ! {command, Command},
+            loop(Controller, Pathfind, Rover, Goal1);
         Any ->
             ?LOG({"steer loop: unknown msg", Any}),
-            loop(Controller, Pathfind, Goal)
+            loop(Controller, Pathfind, Rover, Goal)
     end.
 
 
@@ -95,6 +108,9 @@ desired_dir(Rover,Goal) ->
         Vx > 7*Vy1 -> Speed = fast;
         true -> Speed = normal
     end,
+
+    %% ?LOG({"steer: ", {Vx, Vy}, Speed, Vy1}),
+
     {Speed,Vy1}.
 
 
