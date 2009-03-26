@@ -8,4 +8,4 @@ clean:
 	rm -f erl_crash.dump
 
 run:
-	erl -sname console -pa ebin
+	erl -sname console -pa ebin -s main run
