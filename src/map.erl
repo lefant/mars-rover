@@ -1,252 +1,41 @@
 -module(map).
--compile(export_all).
-%%-export([bench/0]).
+-export([start/2]).
 
 -include("../include/debug.hrl").
 -include("../include/map.hrl").
 
 
-test() ->
-    ok.
-
-
-start(Pathfind,Steer) ->
+start(MapQuad, Steer) ->
     Map = #map{},
-    loop(Pathfind,Steer,Map).
+    loop(MapQuad, Steer, Map).
 
-loop(Pathfind,Steer,Map) ->
+loop(MapQuad, Steer, Map) ->
     receive
-        Msg ->
-            ?LOG({"map: received msg",Msg}),
-            loop(Pathfind,Steer,Map)
+        {boulder, Boulder} ->
+            AlreadyKnown = lists:member(Boulder, Map#map.boulders),
+            if
+                AlreadyKnown -> loop(MapQuad, Steer, Map);
+                true ->
+                    Map1 = Map#map{
+                             boulders=[Boulder|Map#map.boulders] },
+                    MapQuad ! {new, Boulder},
+                    loop(MapQuad, Steer, Map1)
+            end;
+        {crater, Crater} ->
+            AlreadyKnown = lists:member(Crater, Map#map.craters),
+            if
+                AlreadyKnown -> loop(MapQuad, Steer, Map);
+                true ->
+                    Map1 = Map#map{
+                             craters=[Crater|Map#map.craters] },
+                    MapQuad ! {new, Crater},
+                    loop(MapQuad, Steer, Map1)
+            end;
+        {alien, Alien} ->
+            ?LOG({"map:loop aliens currently unhandled", Alien}),
+            loop(MapQuad, Steer, Map);
+        Any ->
+            ?LOG({"map:loop received unknown msg", Any}),
+            loop(MapQuad, Steer, Map)
     end.
 
-
-
-    %% AlreadyKnown = lists:member(
-    %%                  {X,Y,Dir,Speed},
-    %%                  World#world.aliens),
-    %% if 
-    %%     AlreadyKnown ->
-    %%         parse_object_list(World,Rest);
-    %%     true ->
-    %%         parse_object_list(
-    %%           World#world{
-    %%             aliens=[{X,Y,Dir,Speed}|World#world.aliens]
-    %%            },Rest)
-    %% end;
-
-    %%         AlreadyKnown = lists:member(
-    %%                          {X,Y,R},World#world.boulders),
-    %%         if
-    %%             AlreadyKnown -> parse_object_list(World,Rest);
-    %%             true ->
-    %%                 World1 = update_quadtree(World,{X,Y,R}),
-    %%                 parse_object_list(
-    %%                   World1#world{
-    %%                     boulders=[{X,Y,R}|World1#world.boulders]
-    %%                    },Rest)
-    %%         end;
-
-    %%         AlreadyKnown = lists:member(
-    %%                          {X,Y,R},
-    %%                          World#world.craters),
-    %%         if
-    %%             AlreadyKnown -> parse_object_list(World,Rest);
-    %%             true ->
-    %%                 World1 = update_quadtree(World,{X,Y,R}),
-    %%                 parse_object_list(
-    %%                   World1#world{
-    %%                     craters=[{X,Y,R}|World1#world.craters]
-    %%                    },Rest)
-    %%         end;
-    
-
-
-
-
-
-
-%% update_quadtree(World,Circle) -> 
-%%     QuadTree =
-%%         quadtree:insert_circle(
-%%           World#world.quadtree,
-%%           Circle),
-%%     Path = quadtree:astar(
-%%              QuadTree,
-%%              {World#world.x,World#world.y},
-%%              {0,0}),
-%%     World1 = World#world{
-%%                quadtree=QuadTree,
-%%                path=Path
-%%               },
-%%     World1.
-
-
-
-
-
-
-
-%% parse_init_message(["I"|List]) ->
-%%     %% I dx dy time-limit min-sensor max-sensor max-speed max-turn max-hard-turn ;
-%%     [Width,Height,TimeLimit,MinSensor,MaxSensor,MaxSpeed,MaxTurn,MaxHardTurn] = List,
-
-%%     QuadTree = quadtree:new(trunc(str2num(Width)/2)),
-
-%%     #world{
-%%       width=str2num(Width),
-%%       height=str2num(Height),
-%%       timelimit=str2num(TimeLimit),
-%%       minsensor=str2num(MinSensor),
-%%       maxsensor=str2num(MaxSensor),
-%%       maxspeed=str2num(MaxSpeed),
-%%       maxturn=str2num(MaxTurn),
-%%       maxhardturn=str2num(MaxHardTurn),
-%%       quadtree=QuadTree,
-%%       curnode=QuadTree
-%%      }.
-
-%% parse_message(World,["T"|List]) ->
-%%     %% T time-stamp vehicle-ctl vehicle-x vehicle-y vehicle-dir vehicle-speed objects ;
-%%     [_,VehicleCtl,VehicleX,VehicleY,VehicleDir,VehicleSpeed|ObjectList] = List,
-%%     X = str2num(VehicleX),
-%%     Y = str2num(VehicleY),
-%%     CurNode = quadtree:find_node(World#world.quadtree,{X,Y}),
-%%     E = quadtree:eq_node(CurNode,World#world.curnode),
-%%     if
-%%         not E ->
-%%             visualizer ! {oval,World#world.goal,yellow},
-%%             {SubGoal,Path} = quadtree:next_subgoal(World#world.path),
-%%             visualizer ! {oval,SubGoal,green},
-%%             ok;
-%%         true ->
-%%             SubGoal = World#world.goal,
-%%             Path = World#world.path
-%%     end,
-
-%%     World1 = World#world{
-%%                turn=string:substr(VehicleCtl, 2),
-%%                accel=string:left(VehicleCtl, 1),
-%%                x=X,
-%%                y=Y,
-%%                dir=(sanitize_dir(str2num(VehicleDir))),
-%%                speed=str2num(VehicleSpeed),
-%%                curnode=CurNode,
-%%                goal=SubGoal,
-%%                path=Path
-%%               },
-%%     parse_object_list(World1,ObjectList);
-
-
-%% parse_message(World,["E",Time,Score]) ->
-%%     io:format("EVENT: end of round: time: ~p score: ~p~n",[Time,Score]),
-%%     visualizer ! {clear},
-%%     quadtree:visualize(World#world.quadtree,white),
-%%     Path = quadtree:astar(
-%%              World#world.quadtree,
-%%              {World#world.x,World#world.y},
-%%              {0,0}),
-%%     World1 = World#world{
-%%                path=Path
-%%               },
-%%     World1;
-%% parse_message(World,["S",Score]) ->
-%%     io:format("EVENT: end of round: score: ~p~n",[Score]),
-%%     World;
-%% parse_message(World,["B",Time]) ->
-%%     io:format("EVENT: Boulder crash: ~p~n",[Time]),
-%%     World;
-%% parse_message(World,["C",Time]) ->
-%%     io:format("EVENT: Crater crash: ~p~n",[Time]),
-%%     World;
-%% parse_message(World,["K",Time]) ->
-%%     io:format("EVENT: Killed by Martian!: ~p~n",[Time]),
-%%     World;
-%% parse_message(World,[Event,Time]) ->
-%%     io:format("EVENT: unknown!!! time: ~p kind of event: ~p~n",[Time,Event]),
-%%     World;
-%% parse_message(World,Msg) ->
-%%     io:format("unknown message: ~p~n",[Msg]),
-%%     throw({unknown_msg,World,Msg}).
-
-
-
-
-%% parse_object_list(World,[]) ->
-%%     World;
-%% parse_object_list(World,[Type,X1,Y1,Dir1,Speed1|Rest]) when Type == "m" ->
-%%     X = str2num(X1),
-%%     Y = str2num(Y1),
-%%     Dir = str2num(Dir1),
-%%     Speed = str2num(Speed1),
-%%     AlreadyKnown = lists:member(
-%%                      {X,Y,Dir,Speed},
-%%                      World#world.aliens),
-%%     if 
-%%         AlreadyKnown ->
-%%             parse_object_list(World,Rest);
-%%         true ->
-%%             parse_object_list(
-%%               World#world{
-%%                 aliens=[{X,Y,Dir,Speed}|World#world.aliens]
-%%                },Rest)
-%%     end;
-
-%% parse_object_list(World,[Type,X1,Y1,R1|Rest]) ->
-%%     X = str2num(X1),
-%%     Y = str2num(Y1),
-%%     R = str2num(R1),
-%%     case Type of
-%%         "b" ->
-%%             AlreadyKnown = lists:member(
-%%                              {X,Y,R},World#world.boulders),
-%%             if
-%%                 AlreadyKnown -> parse_object_list(World,Rest);
-%%                 true ->
-%%                     World1 = update_quadtree(World,{X,Y,R}),
-%%                     parse_object_list(
-%%                       World1#world{
-%%                         boulders=[{X,Y,R}|World1#world.boulders]
-%%                        },Rest)
-%%             end;
-%%         "c" ->
-%%             AlreadyKnown = lists:member(
-%%                              {X,Y,R},
-%%                              World#world.craters),
-%%             if
-%%                 AlreadyKnown -> parse_object_list(World,Rest);
-%%                 true ->
-%%                     World1 = update_quadtree(World,{X,Y,R}),
-%%                     parse_object_list(
-%%                       World1#world{
-%%                         craters=[{X,Y,R}|World1#world.craters]
-%%                        },Rest)
-%%             end;
-%%         "h" ->
-%%             %%parse_object_list(World#world{home={X,Y,R}},Rest)
-%%             parse_object_list(World,Rest);
-%%         Crap ->
-%%             throw({"parse_object_list: received inner crap ~p~n",Crap})
-%%     end;
-%% parse_object_list(_,[Crap]) ->
-%%     throw({"parse_object_list: received outer crap ~p~n",Crap}).
-
-
-
-
-
-%% update_quadtree(World,Circle) -> 
-%%     QuadTree =
-%%         quadtree:insert_circle(
-%%           World#world.quadtree,
-%%           Circle),
-%%     Path = quadtree:astar(
-%%              QuadTree,
-%%              {World#world.x,World#world.y},
-%%              {0,0}),
-%%     World1 = World#world{
-%%                quadtree=QuadTree,
-%%                path=Path
-%%               },
-%%     World1.

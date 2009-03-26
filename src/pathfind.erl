@@ -14,10 +14,19 @@ start() ->
 
 loop() ->
     receive
+        {quadtree,_} ->
+            ?LOG({"pathfind loop: quadtree event unhandled (should compute new path and send updated subgoal to steer"}),
+            %% Path = quadtree:astar(
+            %%          QuadTree,
+            %%          {World#world.x,World#world.y},
+            %%          {0,0}),
+            loop();
         Any ->
             ?LOG({"pathfind loop: unknown msg",Any}),
             loop()
     end.
+
+
 
 
 

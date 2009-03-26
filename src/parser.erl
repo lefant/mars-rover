@@ -23,28 +23,26 @@ start(Controller,Steer,Map) ->
     end.
 
 loop(Controller,Steer,Map) ->
+    %% ?LOG({"parser:}),
     receive
-        Msg ->
-            ?LOG({"parser: received msg",Msg}),
-            case Msg of
-                ["T"|List] ->
-                    parse_map(Map,
-                              parse_rover(Steer,List));
-                ["B",_] ->
-                    Controller ! {bump,boulder};
-                ["C",_] ->
-                    Controller ! {reset,crater};
-                ["K",_] ->
-                    Controller ! {reset,killed};
-                ["E",_,_] ->
-                    Controller ! {reset,endofround};
-                ["S",_] ->
-                    ?LOG({"parser:loop received score, ignoring"});
-                Any ->
-                    ?LOG({"parser:loop received unknown message",Any})
-            end,
-            loop(Controller,Steer,Map)
-    end.
+        ["T"|List] ->
+            parse_map(Map,
+                      parse_rover(Steer,List));
+        ["B",_] ->
+            Controller ! {bump,boulder};
+        ["C",_] ->
+            Controller ! {reset,crater};
+        ["K",_] ->
+            Controller ! {reset,killed};
+        ["E",_,_] ->
+            Controller ! {reset,endofround};
+        ["S",_] ->
+            ?LOG({"parser:loop received score, ignoring"});
+        Any ->
+            ?LOG({"parser:loop received unknown message",Any})
+    end,
+    loop(Controller,Steer,Map).
+
 
 
 parse_init_message(["I"|List]) ->

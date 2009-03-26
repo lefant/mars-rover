@@ -1,6 +1,7 @@
 {'src/controller.erl', [{outdir, "ebin"}]}.
 {'src/main.erl', [{outdir, "ebin"}]}.
 {'src/map.erl', [{outdir, "ebin"}]}.
+{'src/mapquad.erl', [{outdir, "ebin"}]}.
 {'src/mtm.erl', [{outdir, "ebin"}]}.
 {'src/parser.erl', [{outdir, "ebin"}]}.
 {'src/pathfind.erl', [{outdir, "ebin"}]}.
