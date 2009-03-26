@@ -37,16 +37,16 @@ run() ->
         {world,World} ->
             ok
     end,
+    ?LOG({"main: received initial world"}),
 
     Map ! {start, {MapQuad, Steer}},
     MapQuad ! {start, {Pathfind, World#world.width}},
 
     Pathfind ! {start,{Steer}},
 
-    Steer ! {start, {Controller}},
+    Steer ! {start, {Controller, Pathfind}},
 
     Controller ! {start, {Socket, Steer, Pathfind}},
-
     
 
     ok.

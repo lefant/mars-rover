@@ -13,13 +13,16 @@ test() ->
 start() ->
     receive
         {start, {Controller, Pathfind}} ->
+            ?LOG({"steer entering main loop"}),
             loop(Controller, Pathfind, {0,0})
     end.
 
 loop(Controller, Pathfind, Goal) ->
     receive
-        {rover,Rover} ->
-            Controller ! {command,get_command(Rover,Goal)},
+        {rover, Rover} ->
+            %% ?LOG({"steer:loop received rover", Rover}),
+            Command = get_command(Rover, Goal),
+            Controller ! {command, Command},
             loop(Controller, Pathfind, Goal);
         {goal, Goal1} ->
             loop(Controller, Pathfind, Goal1);
@@ -114,24 +117,24 @@ turn_goal(Diff) ->
 correct_turn(Cur,Goal) ->
     case Goal of
         Cur -> "";
-        "R" -> "r;";
-        "L" -> "l;";
+        "R" -> "r";
+        "L" -> "l";
         "r" ->
             if
-                Cur == "R" -> "l;";
-                true -> "r;"
+                Cur == "R" -> "l";
+                true -> "r"
             end;
         "l" ->
             if
-                Cur == "L" -> "r;";
-                true -> "l;"
+                Cur == "L" -> "r";
+                true -> "l"
             end;
         "-" ->
             case Cur of
-                "L" -> "r;";
-                "l" -> "r;";
-                "R" -> "l;";
-                "r" -> "l;"
+                "L" -> "r";
+                "l" -> "r";
+                "R" -> "l";
+                "r" -> "l"
             end
     end.
 

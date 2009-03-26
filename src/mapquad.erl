@@ -9,6 +9,7 @@ start() ->
     receive
         {start, {Pathfind, WorldSize}} ->
             QuadTree = quadtree:new(trunc(WorldSize/2)),
+            ?LOG({"mapquad entering main loop"}),
             loop(Pathfind, QuadTree)
     end.
 

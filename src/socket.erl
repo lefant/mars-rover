@@ -11,7 +11,7 @@ start({Host, Port}) ->
                                            [binary,
                                             {packet, 0},
                                             {nodelay, true}]),
-            ?LOG("socket: connection to simulator successfully established"),
+            ?LOG("socket:start connection successfully established"),
             loop(Socket, Parser)
     end.
 
@@ -46,8 +46,10 @@ loop(Socket, Parser) ->
             loop(Socket, Parser);
 
         {send, Command} ->
-            gen_tcp:send(Socket, Command);
+            %% ?LOG({"socket: sending command", Command}),
+            gen_tcp:send(Socket, Command),
+            loop(Socket, Parser);
 
         {tcp_closed, Socket} ->
-            ok
+            throw({"fatal: connection to simulator closed"})
     end.

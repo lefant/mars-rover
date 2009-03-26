@@ -9,6 +9,7 @@ start() ->
     receive
         {start, {MapQuad, Steer}} ->
             Map = #map{},
+            ?LOG({"map entering main loop"}),
             loop(MapQuad, Steer, Map)
     end.
 

@@ -12,7 +12,7 @@ start() ->
         {start, {Main, Controller, Steer, Map}} ->
             receive
                 ["I"|List] ->
-                    ?LOG({"parser: at start: received List", List}),
+                    ?LOG({"parser:start received init message", List}),
                     %% I dx dy time-limit min-sensor max-sensor max-speed max-turn max-hard-turn ;
                     [Width,Height,TimeLimit,MinSensor,MaxSensor,MaxSpeed,MaxTurn,MaxHardTurn] =
                         List,
@@ -28,15 +28,17 @@ start() ->
                           maxhardturn=str2num(MaxHardTurn)
                          },
                     Main ! {world, World},
+
+                    ?LOG({"parser entering main loop"}),
                     loop(Controller, Steer, Map)
             end
     end.
 
 
 loop(Controller, Steer, Map) ->
-    %% ?LOG({"parser:}),
     receive
         ["T"|List] ->
+            %% ?LOG({"parser:loop T message received",List}),
             parse_map(Map,
                       parse_rover(Steer, List));
         ["B", _] ->

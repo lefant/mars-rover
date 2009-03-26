@@ -5,11 +5,6 @@
 
 
 test() ->
-    ?LOG("Debug is enabled"),
-    %% dbg:tracer(),
-    %% dbg:p(all, call),
-    %% dbg:tpl(quadtree, astar, 5, []),
-
     visualize:start(),
 
     {Tree, Start, Goal} = quadtree:gen_testquad(),
@@ -44,8 +39,10 @@ test() ->
 start() ->
     receive
         {start, {Steer}} ->
+            ?LOG({"pathfind started, waiting for initial quadtree"}),
             receive
                 {quadtree, QuadTree} ->
+                    ?LOG({"pathfind entering main loop"}),
                     loop(Steer, QuadTree, [])
             end
     end.

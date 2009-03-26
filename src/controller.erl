@@ -8,12 +8,14 @@
 start() ->
     receive
         {start,{Socket, Steer, Pathfind}} ->
+            ?LOG({"controller entering main loop"}),
             loop(Socket, Steer, Pathfind)
     end.
 
 loop(Socket, Steer, Pathfind) ->
     receive
         {command, Command} ->
+            %% ?LOG({"controller:loop passing on", Command}),
             Socket ! {send, Command};
         Any ->
             ?LOG({"controller loop: unknown msg",Any}),
