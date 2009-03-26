@@ -1,13 +1,16 @@
 -module(map).
--export([start/2]).
+-export([start/0]).
 
 -include("../include/debug.hrl").
 -include("../include/map.hrl").
 
 
-start(MapQuad, Steer) ->
-    Map = #map{},
-    loop(MapQuad, Steer, Map).
+start() ->
+    receive
+        {start, {MapQuad, Steer}} ->
+            Map = #map{},
+            loop(MapQuad, Steer, Map)
+    end.
 
 loop(MapQuad, Steer, Map) ->
     receive

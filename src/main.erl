@@ -7,24 +7,41 @@ run() ->
     visualize:start(),
     ?LOG({"main: visualize server started"}),
 
-    Controller = self(),
+    Socket = spawn_link(socket, start, [{"localhost", 17676}]),
+    ?LOG({"main: socket server spawned", Socket}),
+    Parser = spawn_link(parser, start, []),
+    ?LOG({"main: parser server spawned", Parser}),
+
+    Map = spawn_link(map, start, []),
+    ?LOG({"main: map server spawned", Map}),
+    MapQuad = spawn_link(mapquad, start, []),
+    ?LOG({"main: mapquad server spawned", MapQuad}),
+
+    Pathfind = spawn_link(pathfind, start, []),
+    ?LOG({"main: pathfind server spawned", Pathfind}),
+
+    Steer = spawn_link(steer, start, []),
+    ?LOG({"main: steer server spawned", Steer}),
 
 
-    Pathfind = spawn_link(pathfind,start,[]),
-    ?LOG({"main: pathfind server spawned",Pathfind}),
-    Steer = spawn_link(steer,start,[Controller,Pathfind]),
-    ?LOG({"main: steer server spawned",Steer}),
-
-    MapQuad = spawn_link(mapquad,start,[Pathfind]),
-    ?LOG({"main: mapquad server spawned",MapQuad}),
-    Map = spawn_link(map,start,[MapQuad,Steer]),
-    ?LOG({"main: map server spawned",Map}),
-
-    Parser = spawn_link(parser,start,[Controller,Steer,Map]),
-    ?LOG({"main: parser server spawned",Parser}),
-    Socket = spawn_link(socket,start,[{"localhost",17676},Parser]),
-    ?LOG({"main: socket server spawned",Socket}),
+    Controller = spawn_link(controller, start, []),
+    ?LOG({"main: controller server spawned", Controller}),
 
 
-    ?LOG({"main: about to start controller server",Controller}),
-    controller:start(Socket,Steer).
+
+    Socket ! {start, {Parser}},
+    Parser ! {start, {Controller, Steer, Map}},
+
+    receive
+        {worldsize,WorldSize} ->
+            ok
+    end,
+
+    Map ! {start, {MapQuad, Steer}},
+    MapQuad ! {start, {Pathfind, WorldSize}},
+
+    Pathfind ! {start,{Steer}},
+
+    Steer ! {start, {Controller}},
+
+    ok.

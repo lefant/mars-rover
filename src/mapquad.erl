@@ -1,17 +1,20 @@
 -module(mapquad).
--export([start/1]).
+-export([start/0]).
 
 -include("../include/debug.hrl").
 -include("../include/quadtree.hrl").
 
 
-start(Pathfind) ->
-    QuadTree = quadtree:new(),
-    loop(Pathfind, QuadTree).
+start() ->
+    receive
+        {start, {Pathfind, WorldSize}} ->
+            QuadTree = quadtree:new(trunc(WorldSize/2)),
+            loop(Pathfind, QuadTree)
+    end.
 
 loop(Pathfind, QuadTree) ->
     receive
-        {new,Item} ->
+        {new, Item} ->
             QuadTree1 =
                 quadtree:insert_circle(
                   QuadTree,

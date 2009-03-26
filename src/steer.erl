@@ -1,6 +1,5 @@
 -module(steer).
--compile(export_all).
-%%-export([bench/0]).
+-export([start/0,test/0]).
 
 -include("../include/debug.hrl").
 -include("../include/world.hrl").
@@ -11,15 +10,17 @@ test() ->
     ok.
 
 
-start(Controller,Pathfind) ->
-    loop(Controller,Pathfind),
-    ok.
+start() ->
+    receive
+        {start, {Controller, Pathfind}} ->
+            loop(Controller, Pathfind)
+    end.
 
-loop(Controller,Pathfind) ->
+loop(Controller, Pathfind) ->
     receive
         Any ->
-            ?LOG({"steer loop: unknown msg",Any}),
-            loop(Controller,Pathfind)
+            ?LOG({"steer loop: unknown msg", Any}),
+            loop(Controller, Pathfind)
     end.
 
 

@@ -1,32 +1,21 @@
 -module(controller).
--export([start/2,test/0]).
+-export([start/0]).
 
 -include("../include/debug.hrl").
--include("../include/world.hrl").
 
 
-test() ->
-    ok.
 
-
-start(Socket,Steer) ->
-    init(Socket,Steer),
-    ok.
-
-init(Socket,Steer) ->
+start() ->
     receive
-        {world_ready} ->
-            loop(Socket,Steer)
+        {start,{Socket, Steer, Pathfind}} ->
+            loop(Socket, Steer, Pathfind)
     end.
 
-loop(Socket,Steer) ->
+loop(Socket, Steer, Pathfind) ->
     receive
-        {reinit} ->
-            ?LOG({"controller loop: reinit"}),
-            init(Socket,Steer);
         Any ->
             ?LOG({"controller loop: unknown msg",Any}),
-            loop(Socket,Steer)
+            loop(Socket, Steer, Pathfind)
     end.
 
 

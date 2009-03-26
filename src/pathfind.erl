@@ -1,5 +1,5 @@
 -module(pathfind).
--export([start/1,test/0]).
+-export([start/0,test/0]).
 
 -include("../include/debug.hrl").
 
@@ -41,10 +41,13 @@ test() ->
 
 
 
-start(Steer) ->
+start() ->
     receive
-        {quadtree, QuadTree} ->
-            loop(Steer, QuadTree, [])
+        {start, {Steer}} ->
+            receive
+                {quadtree, QuadTree} ->
+                    loop(Steer, QuadTree, [])
+            end
     end.
 
 loop(Steer, QuadTree, Path) ->
