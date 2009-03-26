@@ -25,6 +25,31 @@ loop(Controller,Pathfind) ->
 
 
 
+
+
+
+    %% CurNode = quadtree:find_node(World#world.quadtree,{X,Y}),
+    %% E = quadtree:eq_node(CurNode,World#world.curnode),
+    %% if
+    %%     not E ->
+    %%         visualizer ! {oval,World#world.goal,yellow},
+    %%         {SubGoal,Path} = quadtree:next_subgoal(World#world.path),
+    %%         visualizer ! {oval,SubGoal,green},
+    %%         ok;
+    %%     true ->
+    %%         SubGoal = World#world.goal,
+    %%         Path = World#world.path
+    %% end,
+
+    %% World1 = World#world{
+    %%            curnode=CurNode,
+    %%            goal=SubGoal,
+    %%            path=Path
+    %%           },
+
+
+
+
 get_command(World) ->
     {SpeedStyle,DiffTurn} = desired_dir(World),
     Turn = correct_turn(

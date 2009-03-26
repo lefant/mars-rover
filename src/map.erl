@@ -1,9 +1,9 @@
--module(world).
+-module(map).
 -compile(export_all).
 %%-export([bench/0]).
 
 -include("../include/debug.hrl").
--include("../include/world.hrl").
+-include("../include/map.hrl").
 
 
 test() ->
@@ -20,6 +20,71 @@ loop(Pathfind,Steer,Map) ->
             ?LOG({"map: received msg",Msg}),
             loop(Pathfind,Steer,Map)
     end.
+
+
+
+    %% AlreadyKnown = lists:member(
+    %%                  {X,Y,Dir,Speed},
+    %%                  World#world.aliens),
+    %% if 
+    %%     AlreadyKnown ->
+    %%         parse_object_list(World,Rest);
+    %%     true ->
+    %%         parse_object_list(
+    %%           World#world{
+    %%             aliens=[{X,Y,Dir,Speed}|World#world.aliens]
+    %%            },Rest)
+    %% end;
+
+    %%         AlreadyKnown = lists:member(
+    %%                          {X,Y,R},World#world.boulders),
+    %%         if
+    %%             AlreadyKnown -> parse_object_list(World,Rest);
+    %%             true ->
+    %%                 World1 = update_quadtree(World,{X,Y,R}),
+    %%                 parse_object_list(
+    %%                   World1#world{
+    %%                     boulders=[{X,Y,R}|World1#world.boulders]
+    %%                    },Rest)
+    %%         end;
+
+    %%         AlreadyKnown = lists:member(
+    %%                          {X,Y,R},
+    %%                          World#world.craters),
+    %%         if
+    %%             AlreadyKnown -> parse_object_list(World,Rest);
+    %%             true ->
+    %%                 World1 = update_quadtree(World,{X,Y,R}),
+    %%                 parse_object_list(
+    %%                   World1#world{
+    %%                     craters=[{X,Y,R}|World1#world.craters]
+    %%                    },Rest)
+    %%         end;
+    
+
+
+
+
+
+
+%% update_quadtree(World,Circle) -> 
+%%     QuadTree =
+%%         quadtree:insert_circle(
+%%           World#world.quadtree,
+%%           Circle),
+%%     Path = quadtree:astar(
+%%              QuadTree,
+%%              {World#world.x,World#world.y},
+%%              {0,0}),
+%%     World1 = World#world{
+%%                quadtree=QuadTree,
+%%                path=Path
+%%               },
+%%     World1.
+
+
+
+
 
 
 

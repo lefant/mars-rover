@@ -1,5 +1,5 @@
 -record(map, {
           craters = [],
           boulders = [],
-          aliens = [],
+          aliens = []
          }).
