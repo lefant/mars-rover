@@ -13,18 +13,6 @@
 
 %%% all this should go
 
-% map
-          craters = [],
-          boulders = [],
-          aliens = [],
-
-% rover
-          turn = "-",
-          accel = "-",
-          x = -25.0,
-          y = 25,
-          dir = 50,
-          speed = 0,
 
 % elsewhere
           path=[],

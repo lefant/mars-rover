@@ -1,11 +1,13 @@
 -module(main).
 -export([run/0]).
 -include("../include/debug.hrl").
-
+-include("../include/world.hrl").
 
 run() ->
     visualize:start(),
     ?LOG({"main: visualize server started"}),
+
+    Main = self(),
 
     Socket = spawn_link(socket, start, [{"localhost", 17676}]),
     ?LOG({"main: socket server spawned", Socket}),
@@ -23,25 +25,28 @@ run() ->
     Steer = spawn_link(steer, start, []),
     ?LOG({"main: steer server spawned", Steer}),
 
-
     Controller = spawn_link(controller, start, []),
-    ?LOG({"main: controller server spawned", Controller}),
+    ?LOG({"main: start controller server", Controller}),
 
 
 
     Socket ! {start, {Parser}},
-    Parser ! {start, {Controller, Steer, Map}},
+    Parser ! {start, {Main, Controller, Steer, Map}},
 
     receive
-        {worldsize,WorldSize} ->
+        {world,World} ->
             ok
     end,
 
     Map ! {start, {MapQuad, Steer}},
-    MapQuad ! {start, {Pathfind, WorldSize}},
+    MapQuad ! {start, {Pathfind, World#world.width}},
 
     Pathfind ! {start,{Steer}},
 
     Steer ! {start, {Controller}},
+
+    Controller ! {start, {Socket, Steer, Pathfind}},
+
+    
 
     ok.

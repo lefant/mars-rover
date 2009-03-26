@@ -9,15 +9,29 @@
 
 start() ->
     receive
-        {start, {Controller, Steer, Map}} ->
+        {start, {Main, Controller, Steer, Map}} ->
             receive
-                Msg ->
-                    ?LOG({"parser: at start: received msg", Msg}),
-                    World = parse_init_message(Msg),
-                    Controller ! {world_ready, World},
+                ["I"|List] ->
+                    ?LOG({"parser: at start: received List", List}),
+                    %% I dx dy time-limit min-sensor max-sensor max-speed max-turn max-hard-turn ;
+                    [Width,Height,TimeLimit,MinSensor,MaxSensor,MaxSpeed,MaxTurn,MaxHardTurn] =
+                        List,
+
+                    World = #world{
+                          width=str2num(Width),
+                          height=str2num(Height),
+                          timelimit=str2num(TimeLimit),
+                          minsensor=str2num(MinSensor),
+                          maxsensor=str2num(MaxSensor),
+                          maxspeed=str2num(MaxSpeed),
+                          maxturn=str2num(MaxTurn),
+                          maxhardturn=str2num(MaxHardTurn)
+                         },
+                    Main ! {world, World},
                     loop(Controller, Steer, Map)
             end
     end.
+
 
 loop(Controller, Steer, Map) ->
     %% ?LOG({"parser:}),
@@ -40,26 +54,6 @@ loop(Controller, Steer, Map) ->
     end,
     loop(Controller, Steer, Map).
 
-
-
-parse_init_message(["I"|List]) ->
-    %% I dx dy time-limit min-sensor max-sensor max-speed max-turn max-hard-turn ;
-    [Width,Height,TimeLimit,MinSensor,MaxSensor,MaxSpeed,MaxTurn,MaxHardTurn] = List,
-
-    QuadTree = quadtree:new(trunc(str2num(Width)/2)),
-
-    #world{
-      width=str2num(Width),
-      height=str2num(Height),
-      timelimit=str2num(TimeLimit),
-      minsensor=str2num(MinSensor),
-      maxsensor=str2num(MaxSensor),
-      maxspeed=str2num(MaxSpeed),
-      maxturn=str2num(MaxTurn),
-      maxhardturn=str2num(MaxHardTurn),
-      quadtree=QuadTree,
-      curnode=QuadTree
-     }.
 
 
 
