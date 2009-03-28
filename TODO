@@ -1,11 +1,33 @@
 
 
-* proper controller hierarchy
 
+
+
+* pathfind check if still in same node or need to send new goal to
+   steer on pos update
+
+* control should keep track of steer state and send commands only when
+   change necessary
+** maybe also throttle timing
+
+* steer should compute target speed and then accel/brake as needed
+** + tuning of the best speed / turning parameters
+
+* need to do proper reset on start of new round
+** pathfind should forget about pos / path
+** steer should forget about pos / goal
+** control should forget about steer state
+
+
+-----
+
+
+probably done, but check again:
+
+* proper controller hierarchy
 
 * quadtree astar should use a list of goalnodes
    (home is a circle not  a point)
-
 
 * steering / speed control:
    deviation to distance ratio should be about 1/5 or below when
