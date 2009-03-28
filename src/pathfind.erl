@@ -52,31 +52,42 @@ start() ->
 loop(Steer, Home, QuadTree, Path, Pos) ->
     receive
         {pos, Pos1} ->
-
-            %% FIXME should detect if we have reached the next node and send new nextgoal here
-
+            case Path of
+                [CurPathNode|_] ->
+                    CurNode = quadtree:find_node(QuadTree, Pos1),
+                    E = quadtree:eq_node(CurNode, CurPathNode),
+                    if
+                        not E ->
+                            self() ! {newpath};
+                        true ->
+                            ok
+                    end;
+                _ ->
+                    ok
+            end,
             loop(Steer, Home, QuadTree, Path, Pos1);
         {newpath} ->
             Path1 = quadtree:astar(
                       QuadTree,
                       Pos,
                       Home),
-            ?LOG({"pathfind case dispatch",Path}),
-            case Path1 of
+            self() ! {nextgoal},
+            loop(Steer, Home, QuadTree, Path1, Pos);
+        {nextgoal} ->
+            case Path of
                 [] ->
                     {X,Y,_} = Home,
                     Goal = {X,Y},
-                    Path2 = [];
+                    Path1 = [];
                 [_] ->
                     {X,Y,_} = Home,
                     Goal = {X,Y},
-                    Path2 = [];
+                    Path1 = [];
                 _ ->
-                    {Goal, Path2} = quadtree:next_subgoal(Path1)
+                    {Goal, Path1} = quadtree:next_subgoal(Path)
             end,
-            ?LOG({"pathfind done, send goal",Goal}),
             Steer ! {goal, Goal},
-            loop(Steer, Home, QuadTree, Path2, Pos);
+            loop(Steer, Home, QuadTree, Path1, Pos);
         {quadtree, QuadTree1} ->
             %% ?LOG({"pathfind loop: quadtree event unhandled (should compute new path and send updated subgoal to steer (but need Start point to do so"}),
             self() ! {newpath},

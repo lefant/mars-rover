@@ -107,6 +107,7 @@ next_subgoal([LastNode,CurNode,NextNode|Path]) ->
         nodes_touching(LastNode,CurNode),
         nodes_touching(CurNode,NextNode)),
 
+    %% {NextGoal,[CurNode|[NextNode|Path]]}.
     {NextGoal,[NextNode|Path]}.
 
 

@@ -18,6 +18,10 @@ loop(Socket, Steer, Pathfind) ->
             %% ?LOG({"controller:loop passing on", Command}),
             Socket ! {send, Command},
             loop(Socket, Steer, Pathfind);
+        {reset,endofround} ->
+            ?LOG({"controller loop: endofround message received"}),
+            ?LOG({"controller loop: FIXME SHOULD REALLY HANDLE THIS"}),
+            loop(Socket, Steer, Pathfind);
         Any ->
             ?LOG({"controller loop: unknown msg",Any}),
             loop(Socket, Steer, Pathfind)
