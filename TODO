@@ -9,8 +9,6 @@
 ** + tuning of the best speed / turning parameters
 
 * need to do proper reset on start of new round
-** pathfind should forget about pos / path
-** steer should forget about pos / goal
 ** control should forget about steer state
 
 

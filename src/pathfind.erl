@@ -43,7 +43,6 @@ start() ->
                     receive
                         {pos,Pos} ->
                             self() ! {newpath},
-                            ?LOG({"pathfind entering main loop"}),
                             loop(Steer, Home, QuadTree, [], Pos)
                     end
             end
@@ -92,6 +91,12 @@ loop(Steer, Home, QuadTree, Path, Pos) ->
             %% ?LOG({"pathfind loop: quadtree event unhandled (should compute new path and send updated subgoal to steer (but need Start point to do so"}),
             self() ! {newpath},
             loop(Steer, Home, QuadTree1, Path, Pos);
+        {reset} ->
+            receive
+                {pos,Pos1} ->
+                    self() ! {newpath},
+                    loop(Steer, Home, QuadTree, [], Pos1)
+            end;
         Any ->
             ?LOG({"pathfind loop: unknown msg", Any}),
             loop(Steer, Home, QuadTree, Path, Pos)

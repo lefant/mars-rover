@@ -20,7 +20,8 @@ loop(Socket, Steer, Pathfind) ->
             loop(Socket, Steer, Pathfind);
         {reset,endofround} ->
             ?LOG({"controller loop: endofround message received"}),
-            ?LOG({"controller loop: FIXME SHOULD REALLY HANDLE THIS"}),
+            Pathfind ! {reset},
+            Steer ! {reset},
             loop(Socket, Steer, Pathfind);
         Any ->
             ?LOG({"controller loop: unknown msg",Any}),

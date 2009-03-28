@@ -24,7 +24,8 @@ start() ->
                     end,
                     ?LOG({"steer entering main loop"}),
                     loop(Controller, Pathfind, Rover, Goal)
-            end
+            end,
+            loop(Controller, Pathfind, Rover, Goal)
     end.
 
 loop(Controller, Pathfind, Rover, Goal) ->
@@ -39,6 +40,17 @@ loop(Controller, Pathfind, Rover, Goal) ->
             Command = get_command(Rover, Goal1),
             Controller ! {command, Command},
             loop(Controller, Pathfind, Rover, Goal1);
+        {reset} ->
+            receive
+                {rover, Rover1} ->
+                    ?LOG({"steer waiting for initial goal"}),
+                    receive
+                        {goal, Goal1} ->
+                            Command = get_command(Rover1, Goal1),
+                            Controller ! {command, Command},
+                            loop(Controller, Pathfind, Rover1, Goal1)
+                    end
+            end;
         Any ->
             ?LOG({"steer loop: unknown msg", Any}),
             loop(Controller, Pathfind, Rover, Goal)
