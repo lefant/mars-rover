@@ -1,15 +1,20 @@
 -module(main).
--export([run/0]).
+-export([run/0,start/1]).
 -include("../include/debug.hrl").
 -include("../include/world.hrl").
 
 run() ->
+   start(["localhost", "17676"]).
+
+start([Host, PortStr]) ->
+    {Port, _} = string:to_integer(PortStr),
+
     visualize:start(),
     ?LOG({"main: visualize server started"}),
 
     Main = self(),
 
-    Socket = spawn_link(socket, start, [{"localhost", 17676}]),
+    Socket = spawn_link(socket, start, [{Host, Port}]),
     ?LOG({"main: socket server spawned", Socket}),
     Parser = spawn_link(parser, start, []),
     ?LOG({"main: parser server spawned", Parser}),
