@@ -12,35 +12,35 @@ test() ->
 
     visualize:start(),
 
-    {Tree,Start,Goal} = gen_testquad(),
+    {Tree, Start, Goal} = gen_testquad(),
 
     %% visualize(Tree,white),
 
     {X,Y} = Goal,
-    Path = astar(Tree,Start,{X,Y,5}),
+    Path = astar(Tree, Start, {X, Y, 5}),
 
     if
-        Path == failure ->
+        Path =:= failure ->
             ?LOG({"test: NO PATH found"}),
             ok;
         true ->
             ?LOG({"test: PATH found"}),
-            visualize(Path,yellow),
+            visualize(Path, yellow),
             _ = next_subgoal(Path)
     end,
 
-    visualizer ! {oval,Start,blue},
-    visualizer ! {oval,Goal,orange},
+    visualizer ! {oval, Start, blue},
+    visualizer ! {oval, Goal, orange},
 
-    HomeNodes = home_nodes(Tree,{0,0,5}),
-    visualize(HomeNodes,green),
+    HomeNodes = home_nodes(Tree, {0, 0, 5}),
+    visualize(HomeNodes, green),
 
     ok.
 
 
 gen_testquad() ->
-    {A,B,C} = erlang:now(),
-    random:seed(A,B,C),
+    {A, B, C} = erlang:now(),
+    random:seed(A, B, C),
 
     QuadTree = new(200),
 
@@ -50,32 +50,32 @@ gen_testquad() ->
 
     ListOfCircles =
         lists:filter(
-          fun({X,Y,R})
-             -> not within_circle({X,Y,R+5},Goal)
+          fun({X, Y, R})
+             -> not within_circle({X, Y, R+5}, Goal)
           end,
           lists:filter(
-            fun({X,Y,R})
-               -> not within_circle({X,Y,R+5},Start)
+            fun({X, Y, R})
+               -> not within_circle({X, Y, R+5}, Start)
             end,
             lists:map(
               fun(_) ->
-                      {X,Y} = random_point(),
-                      {X,Y,random:uniform(30)}
+                      {X, Y} = random_point(),
+                      {X, Y, random:uniform(30)}
               end,
-              string:left("",20)))),
+              string:left("", 20)))),
 
 
     Tree = lists:foldl(
-        fun(Circle,Node)
-           -> insert_circle(Node,Circle)
+        fun(Circle, Node)
+           -> insert_circle(Node, Circle)
         end,
         QuadTree,
         ListOfCircles),
 
-    {Tree,Start,Goal}.
+    {Tree, Start, Goal}.
 
 random_point() ->
-    {random:uniform(400)-200,random:uniform(400)-200}.
+    {random:uniform(400)-200, random:uniform(400)-200}.
 
 
 
@@ -94,42 +94,42 @@ new(Size) ->
 
 
 next_subgoal([]) ->
-    {{0,0},[]};
+    {{0,0}, []};
 next_subgoal([GoalNode]) ->
-    ?LOG({"next_subgoal, final subgoal: ",{GoalNode#quadtree.x,GoalNode#quadtree.y}}),
-    {{0,0},[]};
-next_subgoal([LastNode,NextNode]) ->
-    next_subgoal([LastNode,NextNode,#quadtree{x=0,y=0,size=20}]);
-next_subgoal([LastNode,CurNode,NextNode|Path]) ->
-    %% N = {NextNode#quadtree.x,NextNode#quadtree.y},
+    ?LOG({"next_subgoal, final subgoal: ",{GoalNode#quadtree.x, GoalNode#quadtree.y}}),
+    {{0, 0}, []};
+next_subgoal([LastNode, NextNode]) ->
+    next_subgoal([LastNode, NextNode, #quadtree{x=0, y=0, size=20}]);
+next_subgoal([LastNode, CurNode, NextNode|Path]) ->
+    %% N = {NextNode#quadtree.x, NextNode#quadtree.y},
 
     NextGoal = midpoint(
-        nodes_touching(LastNode,CurNode),
-        nodes_touching(CurNode,NextNode)),
+        nodes_touching(LastNode, CurNode),
+        nodes_touching(CurNode, NextNode)),
 
-    %% {NextGoal,[CurNode|[NextNode|Path]]}.
-    {NextGoal,[NextNode|Path]}.
+    %% {NextGoal, [CurNode|[NextNode|Path]]}.
+    {NextGoal, [NextNode|Path]}.
 
 
 
-astar(Tree,StartPoint,Home) ->
-    {X,Y,_} = Home,
-    GoalPoint = {X,Y},
-    StartNode = find_node(Tree,StartPoint),
+astar(Tree, StartPoint, Home) ->
+    {X, Y, _} = Home,
+    GoalPoint = {X, Y},
+    StartNode = find_node(Tree, StartPoint),
 
-    %% GoalNode = find_node(Tree,GoalPoint),
-    GoalNodes = home_nodes(Tree,Home),
+    %% GoalNode = find_node(Tree, GoalPoint),
+    GoalNodes = home_nodes(Tree, Home),
     [GoalNode|_] = GoalNodes,
 
-    E = eq_node(StartNode,GoalNode),
+    E = eq_node(StartNode, GoalNode),
     if
         E -> [StartNode];
-        true -> astar(Tree,GoalPoint,GoalNode,[],[{StartNode,0,[]}])
+        true -> astar(Tree, GoalPoint, GoalNode, [], [{StartNode, 0, []}])
     end.
 astar(_,_,_,_,[]) ->
     failure;
-astar(Tree,GoalPoint,GoalNode,Closed,[{Node,CostSoFar,PathSoFar}|Open]) ->
-    IsGoalReached = eq_node(Node,GoalNode),
+astar(Tree, GoalPoint, GoalNode, Closed, [{Node, CostSoFar, PathSoFar}|Open]) ->
+    IsGoalReached = eq_node(Node, GoalNode),
     if
         IsGoalReached ->
             lists:reverse([Node|PathSoFar]);
@@ -139,20 +139,20 @@ astar(Tree,GoalPoint,GoalNode,Closed,[{Node,CostSoFar,PathSoFar}|Open]) ->
                   fun(MaybeOpenNode) ->
                           not lists:any(
                                 fun(ClosedNode) ->
-                                        eq_node(MaybeOpenNode,ClosedNode)
+                                        eq_node(MaybeOpenNode, ClosedNode)
                                 end,
                                 Closed)
                   end,
-                  neighbours(Tree,Node)),
+                  neighbours(Tree, Node)),
 
             NewOpen =
                 lists:foldl(
-                  fun(NeighbourNode,Open1) ->
-                          NeighbourDist = node_dist2(Node,NeighbourNode),
+                  fun(NeighbourNode, Open1) ->
+                          NeighbourDist = node_dist2(Node, NeighbourNode),
                           AlreadyOpen =
                               lists:filter(
-                                fun({OpenNode,_,_}) ->
-                                        eq_node(NeighbourNode,OpenNode)
+                                fun({OpenNode, _, _}) ->
+                                        eq_node(NeighbourNode, OpenNode)
                                 end,
                                 Open1),
                           case AlreadyOpen of
@@ -161,12 +161,12 @@ astar(Tree,GoalPoint,GoalNode,Closed,[{Node,CostSoFar,PathSoFar}|Open]) ->
                                     CostSoFar+NeighbourDist,
                                     [Node|PathSoFar]}|Open1];
                               [OldNode] ->
-                                  {OpenNode,OldCost,_} = OldNode,
+                                  {OpenNode, OldCost, _} = OldNode,
                                   NewCost = CostSoFar+NeighbourDist,
                                   if
                                       NewCost < OldCost ->
                                           replace_node(
-                                            {OpenNode,NewCost,[Node|PathSoFar]},
+                                            {OpenNode, NewCost, [Node|PathSoFar]},
                                             Open1);
                                        true ->
                                           Open1
@@ -178,12 +178,12 @@ astar(Tree,GoalPoint,GoalNode,Closed,[{Node,CostSoFar,PathSoFar}|Open]) ->
 
             SortedOpen =
                 lists:sort(
-                  fun({Node1,_,_},{Node2,_,_}) ->
-                          min_dist2(Node1,GoalPoint) < min_dist2(Node2,GoalPoint)
+                  fun({Node1, _, _}, {Node2, _, _}) ->
+                          min_dist2(Node1, GoalPoint) < min_dist2(Node2, GoalPoint)
                   end,
                   NewOpen),
 
-            astar(Tree,GoalPoint,GoalNode,[Node|Closed],SortedOpen)
+            astar(Tree, GoalPoint, GoalNode, [Node|Closed], SortedOpen)
     end.
             
 
@@ -194,8 +194,8 @@ astar(Tree,GoalPoint,GoalNode,Closed,[{Node,CostSoFar,PathSoFar}|Open]) ->
 
 
 
-insert_circle(Node,Circle) ->
-    I = intersects_circle(Node,Circle),
+insert_circle(Node, Circle) ->
+    I = intersects_circle(Node, Circle),
     if
         I ->
             if
@@ -203,11 +203,11 @@ insert_circle(Node,Circle) ->
                     Node#quadtree{
                       children=lists:map(
                                  fun(ChildNode) ->
-                                         insert_circle(ChildNode,Circle)
+                                         insert_circle(ChildNode, Circle)
                                  end,
                                  Node#quadtree.children)};
                 true ->
-                    N = node_within_circle(Node,Circle),
+                    N = node_within_circle(Node, Circle),
                     O = Node#quadtree.status=:=obstacle,
                     if
                         (((Node#quadtree.size > ?MINSIZE)
@@ -215,12 +215,12 @@ insert_circle(Node,Circle) ->
                             Node#quadtree{
                               children=lists:map(
                                          fun(ChildNode) ->
-                                                 insert_circle(ChildNode,Circle)
+                                                 insert_circle(ChildNode, Circle)
                                          end,
                                          new_children(Node)),
                               status=parent};
                         true ->
-                            visualize(Node,red),
+                            visualize(Node, red),
                             Node#quadtree{status=obstacle}
                     end
             end;
@@ -229,32 +229,32 @@ insert_circle(Node,Circle) ->
     end.
 
 
-find_node(Node,{X,Y}) ->
+find_node(Node, {X, Y}) ->
     %% io:format("find_node: ~p ~p~n", [string:copies(" ",50-trunc(2*Node#quadtree.size)),{Node#quadtree.x,Node#quadtree.y}]),
     if
         is_list(Node#quadtree.children) ->
             %% ?LOG({"find_node: children"}),
             [MyChild] = lists:filter(
               fun(ChildNode) ->
-                      within_node(ChildNode,{X,Y})
+                      within_node(ChildNode, {X, Y})
               end,
               Node#quadtree.children),
-            find_node(MyChild,{X,Y});
+            find_node(MyChild, {X, Y});
         true -> 
             %% ?LOG({"find_node: leafnode"}),
             Node
     end.
 
-home_nodes(Node,Circle) ->
+home_nodes(Node, Circle) ->
     if
         is_list(Node#quadtree.children) ->
             lists:flatmap(
               fun(ChildNode) ->
-                      home_nodes(ChildNode,Circle)
+                      home_nodes(ChildNode, Circle)
               end,
               Node#quadtree.children);
         true ->
-            I = intersects_circle(Node,Circle),
+            I = intersects_circle(Node, Circle),
             if
                 I -> [Node];
                 true -> []
@@ -265,12 +265,12 @@ home_nodes(Node,Circle) ->
 
 
 
-neighbours(Node,Leaf) ->
+neighbours(Node, Leaf) ->
     lists:filter(
       %% fun(ChildNode) -> not eq_node(Leaf,ChildNode) end,
       fun(ChildNode) ->
               Res = not lists:all(
-                    fun(Point) -> within_node(Leaf,Point) end,
+                    fun(Point) -> within_node(Leaf, Point) end,
                     corners(
                       {ChildNode#quadtree.x,
                        ChildNode#quadtree.y,
@@ -300,8 +300,8 @@ neighbours(Node,Leaf) ->
                       })).
 
 
-neighbours_rec(Node,Leaf) ->
-    I = intersects_node(Node,Leaf),
+neighbours_rec(Node, Leaf) ->
+    I = intersects_node(Node, Leaf),
     if
         I ->
             %% ?LOG({"neighbours: intersects"}),
@@ -310,17 +310,17 @@ neighbours_rec(Node,Leaf) ->
                     %% ?LOG({"neighbours: children"}),
                     lists:flatmap(
                       fun(ChildNode) ->
-                              neighbours_rec(ChildNode,Leaf)
+                              neighbours_rec(ChildNode, Leaf)
                       end,
                       lists:filter(
                         fun(ChildNode) ->
-                                intersects_node(ChildNode,Leaf)
+                                intersects_node(ChildNode, Leaf)
                         end,
                         Node#quadtree.children));
                 true ->
                     %% ?LOG({"neighbours: leafnode"}),
                     if
-                        Node#quadtree.status == empty -> [Node];
+                        Node#quadtree.status =:= empty -> [Node];
                         true -> []
                     end
             end;
@@ -361,17 +361,17 @@ new_children(Node) ->
 
 % visualize/2 takes a Node or list of Nodes and a color
 % will then recurse if necessary and draw it all
-visualize([],_) ->
+visualize([], _) ->
     ok;
-visualize([Node|List],Color) ->
-    visualize(Node,Color),
-    visualize(List,Color);
-visualize(Node,Color) ->
+visualize([Node|List], Color) ->
+    visualize(Node, Color),
+    visualize(List, Color);
+visualize(Node, Color) ->
     if
         is_list(Node#quadtree.children) ->
             lists:map(
               fun(ChildNode) ->
-                      visualize(ChildNode,Color)
+                      visualize(ChildNode, Color)
               end,
               Node#quadtree.children);
         true ->
@@ -380,7 +380,7 @@ visualize(Node,Color) ->
                 obstacle -> Color1 = red;
                 empty -> Color1 = Color
             end,
-            visualizer ! {node,{X1,X2},Color1}
+            visualizer ! {node, {X1, X2}, Color1}
     end.
 
 
@@ -389,93 +389,93 @@ visualize(Node,Color) ->
 
 %%%%% node and geometrical helper functions
 
-replace_node(Item,List) ->
-    replace_node(Item,List,[]).
-replace_node(_,[],Res) ->
+replace_node(Item, List) ->
+    replace_node(Item, List, []).
+replace_node(_, [], Res) ->
     Res;
-replace_node(Item,[H|List],Res) ->
-    {NewNode,_,_} = Item,
-    {OldNode,_,_} = H,
-    E = eq_node(NewNode,OldNode),
+replace_node(Item, [H|List], Res) ->
+    {NewNode, _, _} = Item,
+    {OldNode, _, _} = H,
+    E = eq_node(NewNode, OldNode),
     if
-        E -> replace_node(Item,List,[Item|Res]);
-        true -> replace_node(Item,List,[H|Res])
+        E -> replace_node(Item, List, [Item|Res]);
+        true -> replace_node(Item, List, [H|Res])
     end.
 
 
-eq_node(#quadtree{x=X,y=Y},#quadtree{x=X,y=Y}) ->
+eq_node(#quadtree{x=X, y=Y}, #quadtree{x=X, y=Y}) ->
     true;
-eq_node(_,_) ->
+eq_node(_, _) ->
     false.
 
 
 
-within_node(Node,Point) ->
-    within(Point,node_corners(Node)).
+within_node(Node, Point) ->
+    within(Point, node_corners(Node)).
 
-intersects_node(Node1,Node2) ->
+intersects_node(Node1, Node2) ->
     C1 = node_corners(Node1),
     C2 = node_corners(Node2),
     lists:any(
-      fun(Point) -> within(Point,C1) end,
+      fun(Point) -> within(Point, C1) end,
       C2) or
         lists:any(
-          fun(Point) -> within(Point,C2) end,
+          fun(Point) -> within(Point, C2) end,
           C1).
 
-node_within_circle(Node,Circle) ->
+node_within_circle(Node, Circle) ->
     lists:all(
-      fun(Point) -> within_circle(Circle,Point) end,
+      fun(Point) -> within_circle(Circle, Point) end,
       node_corners(Node)).
 
 
-nodes_touching(N1,N2) ->
+nodes_touching(N1, N2) ->
     C1 = node_corners(N1),
     C2 = node_corners(N2),
 
     ListA = lists:filter(
               fun(Point) ->
-                      within_closed(Point,C1)
+                      within_closed(Point, C1)
               end,
               C2),
     ListB = lists:filter(
               fun(Point) ->
-                      within_closed(Point,C2) end,
+                      within_closed(Point, C2) end,
               C1),
 
     CommonPointList = lists:usort(
-      fun({X1,Y1},{X2,Y2}) ->
+      fun({X1, Y1}, {X2, Y2}) ->
               (X1 =< X2) and (Y1 =< Y2)
       end,
       ListA ++ ListB),
 
     case CommonPointList of
         [] ->
-            ?LOG({"nodes_touching: hmpf! NOT touching",N1,N2}),
-            {N2#quadtree.x,N2#quadtree.y};
+            ?LOG({"nodes_touching: hmpf! NOT touching", N1, N2}),
+            {N2#quadtree.x, N2#quadtree.y};
         %% [P] ->
         %%     visualizer ! {oval, P, black},
         %%     NextGoal = midpoint(N,P);
-        [P1,P2,P3,P4] ->
-            ?LOG({"nodes_touching: hmpf! 4 touching",N1,N2}),
+        [P1, P2, P3, P4] ->
+            ?LOG({"nodes_touching: hmpf! 4 touching", N1, N2}),
             visualizer ! {oval, P1, yellow},
             visualizer ! {oval, P2, yellow},
             visualizer ! {oval, P3, yellow},
             visualizer ! {oval, P4, yellow},
-            midpoint(midpoint(P1,P2),midpoint(P3,P4));
-        [P1,P2] ->
+            midpoint(midpoint(P1, P2), midpoint(P3, P4));
+        [P1, P2] ->
             visualizer ! {oval, P1, black},
             visualizer ! {oval, P2, black},
-            midpoint(P1,P2)
+            midpoint(P1, P2)
     end.
 
 
-within({X,Y},[{X1,Y1},{X2,Y2},_,_]) ->
+within({X, Y}, [{X1, Y1}, {X2, Y2}, _, _]) ->
     ((X1 < X) and (X =< X2))
         and
           ((Y1 < Y) and (Y =< Y2)).
 
-within_closed({X,Y},[{X1,Y1},{X2,Y2},_,_]) ->
+within_closed({X,Y}, [{X1, Y1}, {X2, Y2}, _, _]) ->
     ((X1 =< X) and (X =< X2))
         and
           ((Y1 =< Y) and (Y =< Y2)).
@@ -485,35 +485,35 @@ node_corners(Node) ->
              Node#quadtree.y,
              Node#quadtree.size}).
 
-corners({X,Y,Size}) ->
-    [{X-Size,Y-Size},
-     {X+Size,Y+Size},
-     {X+Size,Y-Size},
-     {X-Size,Y+Size}].
+corners({X, Y, Size}) ->
+    [{X-Size, Y-Size},
+     {X+Size, Y+Size},
+     {X+Size, Y-Size},
+     {X-Size, Y+Size}].
 
 
-within_circle({X,Y,R},Point) ->
-    dist2({X,Y},Point) =< sqr(R).
+within_circle({X, Y, R}, Point) ->
+    dist2({X, Y}, Point) =< sqr(R).
 
 
-min_dist2(Node,Point) ->
+min_dist2(Node, Point) ->
     dist2(
-      {Node#quadtree.x,Node#quadtree.y},
+      {Node#quadtree.x, Node#quadtree.y},
       Point).
     %% lists:min(
     %%   lists:map(
     %%     fun(NPoint) -> dist2(Point,NPoint) end,
     %%     node_corners(Node))).
 
-node_dist2(Node1,Node2) ->
-    dist2({Node1#quadtree.x,Node1#quadtree.y},
-          {Node2#quadtree.x,Node2#quadtree.y}).
+node_dist2(Node1, Node2) ->
+    dist2({Node1#quadtree.x, Node1#quadtree.y},
+          {Node2#quadtree.x, Node2#quadtree.y}).
 
-dist2({X1,Y1},{X2,Y2}) ->
+dist2({X1, Y1}, {X2, Y2}) ->
     sqr(X1-X2) + sqr(Y1-Y2).
 
-midpoint({X1,Y1},{X2,Y2}) ->
-    {(X1+X2)/2,(Y1+Y2)/2}.
+midpoint({X1, Y1}, {X2, Y2}) ->
+    {(X1+X2)/2, (Y1+Y2)/2}.
 
 sqr(X) ->
     X*X.
@@ -530,7 +530,7 @@ sqr(X) ->
 
 
 
-intersects_circle(Node,{X,Y,R}) ->
+intersects_circle(Node, {X, Y, R}) ->
     NodeXmax = Node#quadtree.x+Node#quadtree.size,
     NodeXmin = Node#quadtree.x-Node#quadtree.size,
     NodeYmax = Node#quadtree.y+Node#quadtree.size,

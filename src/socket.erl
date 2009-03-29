@@ -27,7 +27,7 @@ loop(Socket, Parser) ->
                     loop(Socket, Parser);
                 {ok, MsgList} ->
                     MsgList2 = lists:filter(
-                      fun(Msg) -> not (Msg == []) end,
+                      fun(Msg) -> not (Msg =:= []) end,
                       MsgList),
                     lists:map(
                       fun(Msg) ->

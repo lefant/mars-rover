@@ -82,8 +82,8 @@ loop(Controller, Pathfind, Rover, Goal) ->
 
 
 
-get_command(Rover,Goal) ->
-    {SpeedStyle,DiffTurn} = desired_dir(Rover,Goal),
+get_command(Rover, Goal) ->
+    {SpeedStyle, DiffTurn} = desired_dir(Rover, Goal),
     Turn = correct_turn(
              Rover#rover.turn,
              turn_goal(DiffTurn)),
@@ -94,11 +94,11 @@ get_command(Rover,Goal) ->
                 %% FIXME: should get this via message from main on bootup
                 20,
                 SpeedStyle)),
-    list_to_binary(string:join([Accel,Turn,";"],"")).
+    list_to_binary(string:join([Accel, Turn, ";"], "")).
 
 
-desired_dir(Rover,Goal) ->
-    {Vx,Vy} =
+desired_dir(Rover, Goal) ->
+    {Vx, Vy} =
         coords_to_pov(
           Rover#rover.x,
           Rover#rover.y,
@@ -108,7 +108,7 @@ desired_dir(Rover,Goal) ->
     if
         Vx < 0 ->
             if
-                Vy == 0 -> Vy1 = 100;
+                Vy =:= 0 -> Vy1 = 100;
                 true -> Vy1 = Vy
             end;
         true ->
@@ -123,7 +123,7 @@ desired_dir(Rover,Goal) ->
 
     %% ?LOG({"steer: ", {Vx, Vy}, Speed, Vy1}),
 
-    {Speed,Vy1}.
+    {Speed, Vy1}.
 
 
 
@@ -149,12 +149,12 @@ correct_turn(Cur,Goal) ->
         "L" -> "l";
         "r" ->
             if
-                Cur == "R" -> "l";
+                Cur =:= "R" -> "l";
                 true -> "r"
             end;
         "l" ->
             if
-                Cur == "L" -> "r";
+                Cur =:= "L" -> "r";
                 true -> "l"
             end;
         "-" ->
@@ -167,11 +167,11 @@ correct_turn(Cur,Goal) ->
     end.
 
 
-accel_goal(CurSpeed,MaxSpeed,Style) ->
+accel_goal(CurSpeed, MaxSpeed, Style) ->
     case Style of
         fast ->
             if
-                CurSpeed == MaxSpeed -> "-";
+                CurSpeed =:= MaxSpeed -> "-";
                 true -> "a"
             end;
         normal ->
@@ -188,7 +188,7 @@ accel_goal(CurSpeed,MaxSpeed,Style) ->
             end
     end.
 
-correct_accel(Cur,Goal) ->
+correct_accel(Cur, Goal) ->
     case Goal of
         Cur -> "";
         "a" -> "a";
@@ -229,11 +229,11 @@ test_pov_funcs() ->
     coords_to_pov(0,0,math:pi()/2,{0,-1}),
     coords_to_pov(0,0,math:pi(),{0,-1}),
     ok.
-test_pov(X,Y,E) ->
-    {X1,Y1} = coords_to_pov(0,0,E*(math:pi()/2),{X,Y}),
-    {trunc(X1),trunc(Y1)}.
+test_pov(X, Y, E) ->
+    {X1, Y1} = coords_to_pov(0, 0, E*(math:pi()/2), {X, Y}),
+    {trunc(X1), trunc(Y1)}.
 
-coords_to_pov(Ox,Oy,Dir,{X,Y}) ->
+coords_to_pov(Ox, Oy, Dir, {X, Y}) ->
     X1 = X-Ox,
     Y1 = Y-Oy,
     Sin = math:sin(Dir),
@@ -241,4 +241,4 @@ coords_to_pov(Ox,Oy,Dir,{X,Y}) ->
     X2 = X1*Cos-Y1*Sin,
     Y2 = Y1*Cos+X1*Sin,
     %%?LOG({"coords_to_pov: ",{Ox,Oy},Dir,{X,Y},{X1,Y1},{sin,Sin},{cos,Cos},{X2,Y2}}),
-    {X2,Y2}.
+    {X2, Y2}.

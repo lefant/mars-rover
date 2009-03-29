@@ -17,7 +17,7 @@ test() ->
     receive
         {Pathfind, {path, Path}} ->
             if
-                Path == failure ->
+                Path =:= failure ->
                     ?LOG({"test: NO PATH found"}),
                     ok;
                 true ->
@@ -41,7 +41,7 @@ start() ->
                 {quadtree, QuadTree} ->
                     ?LOG({"pathfind received initial quad, waiting for initial pos"}),
                     receive
-                        {pos,Pos} ->
+                        {pos, Pos} ->
                             self() ! {newpath},
                             loop(Steer, Home, QuadTree, [], Pos)
                     end
@@ -75,12 +75,12 @@ loop(Steer, Home, QuadTree, Path, Pos) ->
         {nextgoal} ->
             case Path of
                 [] ->
-                    {X,Y,_} = Home,
-                    Goal = {X,Y},
+                    {X, Y, _} = Home,
+                    Goal = {X, Y},
                     Path1 = [];
                 [_] ->
-                    {X,Y,_} = Home,
-                    Goal = {X,Y},
+                    {X, Y, _} = Home,
+                    Goal = {X, Y},
                     Path1 = [];
                 _ ->
                     {Goal, Path1} = quadtree:next_subgoal(Path)
@@ -101,6 +101,4 @@ loop(Steer, Home, QuadTree, Path, Pos) ->
             ?LOG({"pathfind loop: unknown msg", Any}),
             loop(Steer, Home, QuadTree, Path, Pos)
     end.
-
-    
 

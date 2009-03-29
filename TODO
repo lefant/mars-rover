@@ -3,7 +3,7 @@
 
 * control should keep track of steer state and send commands only when
    change necessary
-** maybe also throttle timing
+** maybe also rate throttle sending of steering commands
 
 * steer should compute target speed and then accel/brake as needed
 ** + tuning of the best speed / turning parameters

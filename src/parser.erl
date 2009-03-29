@@ -75,7 +75,7 @@ parse_rover(Steer, Pathfind, List) ->
      },
 
     Steer ! {rover, Rover},
-    Pathfind ! {pos, {X,Y}},
+    Pathfind ! {pos, {X, Y}},
 
     ObjectList.
 
@@ -84,7 +84,7 @@ parse_rover(Steer, Pathfind, List) ->
 parse_map(_, []) ->
     ok;
 
-parse_map(Map, [Type,X1,Y1,Dir1,Speed1|Rest]) when Type == "m" ->
+parse_map(Map, [Type, X1, Y1, Dir1, Speed1|Rest]) when Type =:= "m" ->
     X = str2num(X1),
     Y = str2num(Y1),
     Dir = str2num(Dir1),
