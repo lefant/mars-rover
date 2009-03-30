@@ -457,14 +457,14 @@ nodes_touching(N1, N2) ->
         %%     NextGoal = midpoint(N,P);
         [P1, P2, P3, P4] ->
             ?LOG({"nodes_touching: hmpf! 4 touching", N1, N2}),
-            visualizer ! {oval, P1, yellow},
-            visualizer ! {oval, P2, yellow},
-            visualizer ! {oval, P3, yellow},
-            visualizer ! {oval, P4, yellow},
+%%             visualizer ! {oval, P1, yellow},
+%%             visualizer ! {oval, P2, yellow},
+%%             visualizer ! {oval, P3, yellow},
+%%             visualizer ! {oval, P4, yellow},
             midpoint(midpoint(P1, P2), midpoint(P3, P4));
         [P1, P2] ->
-            visualizer ! {oval, P1, black},
-            visualizer ! {oval, P2, black},
+            visualizer ! {oval, P1, black, 1},
+            visualizer ! {oval, P2, black, 1},
             midpoint(P1, P2)
     end.
 

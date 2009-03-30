@@ -67,7 +67,7 @@ loop(Steer, Home, QuadTree, Path, NextNode, Pos) ->
 %%             ?LOG({"pathfind loop: nextgoal received, call nextgoal"}),
 %%             nextgoal(Steer, Home, QuadTree, Path, Pos);
         {quadtree, QuadTree1} ->
-            ?LOG({"pathfind loop: quadtree received, update it and run newpath"}),
+%%             ?LOG({"pathfind loop: quadtree received, update it and run newpath"}),
             newpath(Steer, Home, QuadTree1, Pos);
         {reset} ->
             ?LOG({"pathfind loop: reset received, waiting for initial pos"}),
