@@ -37,6 +37,8 @@ loop(Controller, Pathfind, Rover, Goal) ->
             loop(Controller, Pathfind, Rover1, Goal);
         {goal, Goal1} ->
             ?LOG({"steer:loop new goal:", Goal1}),
+            visualizer ! {oval, Goal, yellow},
+            visualizer ! {oval, Goal1, green},
             Command = get_command(Rover, Goal1),
             Controller ! {command, Command},
             loop(Controller, Pathfind, Rover, Goal1);

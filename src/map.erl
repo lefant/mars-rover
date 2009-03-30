@@ -35,8 +35,8 @@ loop(MapQuad, Steer, Map) ->
                     MapQuad ! {new, Crater},
                     loop(MapQuad, Steer, Map1)
             end;
-        {alien, Alien} ->
-            ?LOG({"map:loop aliens currently unhandled", Alien}),
+        {martian, Martian} ->
+%%             ?LOG({"map:loop aliens currently unhandled", Martian}),
             loop(MapQuad, Steer, Map);
         Any ->
             ?LOG({"map:loop received unknown msg", Any}),

@@ -22,10 +22,13 @@ loop(Pathfind, QuadTree) ->
                   Item),
             %% FIXME: we should only send an update to Pathfind
             %% if the quad actually changed here
-            Pathfind ! {quadtree, QuadTree1},
+            %% NEEDS TESTING
+            if
+                QuadTree =/= QuadTree1 -> Pathfind ! {quadtree, QuadTree1};
+                true -> void
+            end,
             loop(Pathfind, QuadTree1);
         Any ->
             ?LOG({"map:loop received unknown msg", Any}),
             loop(Pathfind, QuadTree)
     end.
-

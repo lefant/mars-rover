@@ -1,5 +1,10 @@
 
 
+* pathfind should track if we have *reached* the next node, not if we
+   have left the last one
+** pathfind still same curnode on pos update / quadtree:next_subgoal
+   method "could be better"
+
 
 * control should keep track of steer state and send commands only when
    change necessary
@@ -26,5 +31,3 @@ probably done, but check again:
    deviation to distance ratio should be about 1/5 or below when
    accelerating
 
-* pathfind still same curnode on pos update / quadtree:next_subgoal
-   method "could be better"

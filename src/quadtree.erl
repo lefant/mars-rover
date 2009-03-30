@@ -94,21 +94,23 @@ new(Size) ->
 
 
 next_subgoal([]) ->
-    {{0,0}, []};
-next_subgoal([GoalNode]) ->
-    ?LOG({"next_subgoal, final subgoal: ",{GoalNode#quadtree.x, GoalNode#quadtree.y}}),
-    {{0, 0}, []};
-next_subgoal([LastNode, NextNode]) ->
-    next_subgoal([LastNode, NextNode, #quadtree{x=0, y=0, size=20}]);
-next_subgoal([LastNode, CurNode, NextNode|Path]) ->
+    throw({empty_path,"cannot compute next subgoal of an empty path"});
+next_subgoal(no_path) ->
+    throw({no_path,"cannot compute next subgoal when there is no path"});
+next_subgoal([_]) ->
+    ?LOG({"next_subgoal, final subgoal: ",{0, 0}}),
+    {{0, 0}, no_next_node, []};
+next_subgoal([LastNode, CurNode]) ->
+    next_subgoal([LastNode, CurNode, #quadtree{x=0, y=0, size=5}]);
+next_subgoal([CurNode, NextNode, NexterNode|Path]) ->
     %% N = {NextNode#quadtree.x, NextNode#quadtree.y},
 
     NextGoal = midpoint(
-        nodes_touching(LastNode, CurNode),
-        nodes_touching(CurNode, NextNode)),
+        nodes_touching(CurNode, NextNode),
+        nodes_touching(NextNode, NexterNode)),
 
-    %% {NextGoal, [CurNode|[NextNode|Path]]}.
-    {NextGoal, [NextNode|Path]}.
+    visualize(NextNode, yellow),
+    {NextGoal, NextNode, [NextNode|[NexterNode|Path]]}.
 
 
 
@@ -215,6 +217,7 @@ insert_circle(Node, Circle) ->
                             Node#quadtree{
                               children=lists:map(
                                          fun(ChildNode) ->
+                                                 visualize(ChildNode, white),
                                                  insert_circle(ChildNode, Circle)
                                          end,
                                          new_children(Node)),
