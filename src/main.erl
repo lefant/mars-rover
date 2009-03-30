@@ -9,6 +9,7 @@ run() ->
 start([Host, PortStr]) ->
     {Port, _} = string:to_integer(PortStr),
 
+
     visualize:start(),
     ?LOG({"main: visualize server started"}),
 
@@ -21,8 +22,8 @@ start([Host, PortStr]) ->
 
     Map = spawn_link(map, start, []),
     ?LOG({"main: map server spawned", Map}),
-    MapQuad = spawn_link(mapquad, start, []),
-    ?LOG({"main: mapquad server spawned", MapQuad}),
+    Mapquad = spawn_link(mapquad, start, []),
+    ?LOG({"main: mapquad server spawned", Mapquad}),
 
     Pathfind = spawn_link(pathfind, start, []),
     ?LOG({"main: pathfind server spawned", Pathfind}),
@@ -44,8 +45,8 @@ start([Host, PortStr]) ->
     end,
     ?LOG({"main: received initial world"}),
 
-    Map ! {start, {MapQuad, Steer}},
-    MapQuad ! {start, {Pathfind, World#world.width}},
+    Map ! {start, {Mapquad, Steer}},
+    Mapquad ! {start, {Pathfind, World#world.width}},
 
     %% Home = World#world.home,
     Home = {0,0,5},
@@ -53,7 +54,7 @@ start([Host, PortStr]) ->
 
     Steer ! {start, {Controller, Pathfind}},
 
-    Controller ! {start, {Socket, Steer, Pathfind}},
+    Controller ! {start, {Socket, Steer, Pathfind, Mapquad}},
     
 
     ok.

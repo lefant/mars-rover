@@ -28,6 +28,9 @@ loop(Pathfind, QuadTree) ->
                 true -> void
             end,
             loop(Pathfind, QuadTree1);
+        {visualize} ->
+            quadtree:visualize(QuadTree, white),
+            loop(Pathfind, QuadTree);
         Any ->
             ?LOG({"map:loop received unknown msg", Any}),
             loop(Pathfind, QuadTree)

@@ -59,7 +59,8 @@ loop() ->
                       [{coords,
                         [transform({0, 0}),
                          transform({0, 0})]},
-                       {fill, grey}]);
+                       {fill, grey}]),
+            loop();
         {oval, Point, Color} ->
             %% ?LOG({"visualize loop: oval", Point, Color}),
             draw_oval(Point, Color, 3),

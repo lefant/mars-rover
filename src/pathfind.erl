@@ -56,7 +56,7 @@ start() ->
 loop(Steer, Home, QuadTree, Path, NextNode, Pos) ->
     receive
         {pos, Pos1} ->
-            visualizer ! {oval, Pos1, blue, 3},
+            visualizer ! {oval, Pos1, blue, 1},
 
             CurNode = quadtree:find_node(QuadTree, Pos1),
             E = quadtree:eq_node(CurNode, NextNode),
@@ -98,8 +98,9 @@ loop(Steer, Home, QuadTree, Path, NextNode, Pos) ->
                     ?LOG({"pathfind loop: initial pos received"}),
                     Path1 = quadtree:astar(
                               QuadTree,
-                              Pos,
+                              Pos1,
                               Home),
+                    ?LOG({"pathfind loop: initial path", Path1}),
                     {Goal, NextNode1, Path2} = quadtree:next_subgoal(Path1),
                     Steer ! {goal, Goal},
                     loop(Steer, Home, QuadTree, Path2, NextNode1, Pos1)

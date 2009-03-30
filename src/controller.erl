@@ -7,24 +7,26 @@
 
 start() ->
     receive
-        {start,{Socket, Steer, Pathfind}} ->
+        {start, Pids} ->
             ?LOG({"controller entering main loop"}),
-            loop(Socket, Steer, Pathfind)
+            loop(Pids)
     end.
 
-loop(Socket, Steer, Pathfind) ->
+loop({Socket, Steer, Pathfind, Mapquad}=Pids) ->
     receive
         {command, Command} ->
             %% ?LOG({"controller:loop passing on", Command}),
             Socket ! {send, Command},
-            loop(Socket, Steer, Pathfind);
+            loop(Pids);
         {reset,endofround} ->
             ?LOG({"controller loop: endofround message received"}),
             Pathfind ! {reset},
             Steer ! {reset},
-            loop(Socket, Steer, Pathfind);
+            visualizer ! {clear},
+            Mapquad ! {visualize},
+            loop(Pids);
         Any ->
-            ?LOG({"controller loop: unknown msg",Any}),
-            loop(Socket, Steer, Pathfind)
+            ?LOG({"controller loop: unknown msg", Any}),
+            loop(Pids)
     end.
 

@@ -1,5 +1,5 @@
 -module(quadtree).
--export([test/0,new/1,insert_circle/2,next_subgoal/1,astar/3,find_node/2,eq_node/2]).
+-export([test/0,new/1,insert_circle/2,next_subgoal/1,astar/3,find_node/2,eq_node/2,visualize/2]).
 
 -include("../include/debug.hrl").
 -include("../include/quadtree.hrl").
@@ -93,18 +93,14 @@ new(Size) ->
 
 
 
-next_subgoal([]) ->
-    throw({empty_path,"cannot compute next subgoal of an empty path"});
 next_subgoal(no_path) ->
     throw({no_path,"cannot compute next subgoal when there is no path"});
 next_subgoal([_]) ->
     ?LOG({"next_subgoal, final subgoal: ",{0, 0}}),
-    {{0, 0}, no_next_node, []};
+    {{0, 0}, no_next_node, no_path};
 next_subgoal([LastNode, CurNode]) ->
-    next_subgoal([LastNode, CurNode, #quadtree{x=0, y=0, size=5}]);
+    next_subgoal([LastNode, CurNode, #quadtree{x=0, y=0, size=10}]);
 next_subgoal([CurNode, NextNode, NexterNode|Path]) ->
-    %% N = {NextNode#quadtree.x, NextNode#quadtree.y},
-
     NextGoal = midpoint(
         nodes_touching(CurNode, NextNode),
         nodes_touching(NextNode, NexterNode)),
