@@ -19,6 +19,7 @@ start() ->
                     ?LOG({"steer waiting for initial goal"}),
                     receive
                         {goal, Goal} ->
+                            visualizer ! {oval, Goal, green},
                             maybe_command(Controller, Rover, Goal),
                             ?LOG({"steer entering main loop"}),
                             loop(Controller, Pathfind, Rover, Goal)
@@ -33,7 +34,7 @@ loop(Controller, Pathfind, Rover, Goal) ->
             maybe_command(Controller, Rover1, Goal),
             loop(Controller, Pathfind, Rover1, Goal);
         {goal, Goal1} ->
-%%             ?LOG({"steer:loop new goal:", Goal1}),
+            ?LOG({"steer:loop new goal:", Goal1}),
             visualizer ! {oval, Goal, yellow},
             visualizer ! {oval, Goal1, green},
             maybe_command(Controller, Rover, Goal1),
@@ -44,6 +45,7 @@ loop(Controller, Pathfind, Rover, Goal) ->
                     ?LOG({"steer waiting for initial goal"}),
                     receive
                         {goal, Goal1} ->
+                            visualizer ! {oval, Goal1, green},
                             maybe_command(Controller, Rover1, Goal1),
                             loop(Controller, Pathfind, Rover1, Goal1)
                     end
@@ -66,7 +68,6 @@ maybe_command(Controller, Rover, Goal) ->
                v2turn(VGoal))),
 
     TargetSpeed = v2speed(VGoal, 20),
-    ?LOG({"steer loop: target speed", TargetSpeed}),
 
     Accel = correct_accel(
               Rover#rover.accel,
@@ -79,6 +80,9 @@ maybe_command(Controller, Rover, Goal) ->
         (Accel =:= "") and (Turn =:= "") -> void;
         true ->
             Command = list_to_binary(string:join([Accel, Turn, ";"], "")),
+
+            ?LOG({"steer steering: ", {Accel, Turn}, {Rover#rover.speed, TargetSpeed}}),
+
             Controller ! {command, Command}
     end.
 

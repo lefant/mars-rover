@@ -51,5 +51,6 @@ loop(Socket, Parser) ->
             loop(Socket, Parser);
 
         {tcp_closed, Socket} ->
-            throw({"fatal: connection to simulator closed"})
+            init:stop()
+            %% throw({"fatal: connection to simulator closed"})
     end.

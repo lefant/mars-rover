@@ -1,33 +1,20 @@
 
-
-* pathfind should track if we have *reached* the next node, not if we
-   have left the last one
-** pathfind still same curnode on pos update / quadtree:next_subgoal
-   method "could be better"
+* need better subgoal acquiring / achievement detection strategy
 
 
 * control should keep track of steer state and send commands only when
    change necessary
 ** maybe also rate throttle sending of steering commands
+** but also resend if state does not change as desired
 
-* steer should compute target speed and then accel/brake as needed
-** + tuning of the best speed / turning parameters
 
 * need to do proper reset on start of new round
-** control should forget about steer state
-
+** sometimes steer hangs waiting for initial goal
 
 -----
 
 
 probably done, but check again:
 
-* proper controller hierarchy
-
 * quadtree astar should use a list of goalnodes
    (home is a circle not  a point)
-
-* steering / speed control:
-   deviation to distance ratio should be about 1/5 or below when
-   accelerating
-
