@@ -1,20 +1,23 @@
 
+TOPIC:
+------
 * need better subgoal acquiring / achievement detection strategy
 
 
+TODO:
+-----
 * control should keep track of steer state and send commands only when
    change necessary
 ** maybe also rate throttle sending of steering commands
 ** but also resend if state does not change as desired
 
 
-* need to do proper reset on start of new round
 ** sometimes steer hangs waiting for initial goal
 
------
 
 
-probably done, but check again:
-
+WISHLIST:
+---------
 * quadtree astar should use a list of goalnodes
-   (home is a circle not  a point)
+** (home is a circle not  a point)
+** this is already prepared in astar/3

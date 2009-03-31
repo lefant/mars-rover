@@ -20,8 +20,8 @@ loop({Socket, Steer, Pathfind, Mapquad}=Pids) ->
             loop(Pids);
         {reset,endofround} ->
             ?LOG({"controller loop: endofround message received"}),
-            Pathfind ! {reset},
             Steer ! {reset},
+            Pathfind ! {reset},
             visualizer ! {clear},
             Mapquad ! {visualize},
             loop(Pids);

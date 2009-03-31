@@ -33,7 +33,7 @@ random_point() ->
 
 
 start() ->
-    Pid = spawn(
+    Pid = spawn_link(
             fun() ->
                     % initialization
                     I=gs:start(),
