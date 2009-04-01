@@ -64,6 +64,7 @@ parse_rover(Steer, Pathfind, List) ->
     [TimeStamp,VehicleCtl,VehicleX,VehicleY,VehicleDir,VehicleSpeed|ObjectList] = List,
     X = str2num(VehicleX),
     Y = str2num(VehicleY),
+    Pos = {X, Y},
 
     Rover = #rover{
       timestamp=TimeStamp,
@@ -71,12 +72,13 @@ parse_rover(Steer, Pathfind, List) ->
       accel=string:left(VehicleCtl, 1),
       x=X,
       y=Y,
+      pos=Pos,
       dir=(sanitize_dir(str2num(VehicleDir))),
       speed=str2num(VehicleSpeed)
      },
 
     Steer ! {rover, Rover},
-    Pathfind ! {pos, {X, Y}},
+    Pathfind ! {pos, Pos},
 
     ObjectList.
 

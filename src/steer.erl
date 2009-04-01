@@ -31,8 +31,10 @@ loop(Controller, Pathfind, Rover, Goal) ->
     receive
         {rover, Rover1} ->
             %% ?LOG({"steer:loop received rover", Rover}),
+            SeekSteering = v_add(Rover1#rover.pos, seek(Rover, Goal, 20)),
+            visualizer ! {oval, SeekSteering, green, 2},
             visualizer ! {oval, future_pos(Rover), orange, 2},
-            visualizer ! {oval, {Rover1#rover.x, Rover1#rover.y}, blue, 2},
+            visualizer ! {oval, Rover1#rover.pos, blue, 2},
 
             maybe_command(Controller, Rover1, Goal),
             loop(Controller, Pathfind, Rover1, Goal);
@@ -63,7 +65,7 @@ loop(Controller, Pathfind, Rover, Goal) ->
 
 
 maybe_command(Controller, Rover, Goal) ->
-    VGoal = vgoal(Rover, Goal),
+    VGoal = to_rover_coordinates(Rover, Goal),
 
     Turn = correct_turn(
              Rover#rover.turn,
@@ -90,27 +92,38 @@ maybe_command(Controller, Rover, Goal) ->
     end.
 
 
-%%% seek behaviour according to http://www.red3d.com/cwr/steer/gdc99/
-%%
-%% desired_velocity = normalize (position - target) * max_speed
-%% steering = desired_velocity - velocity
 
-
-
-vgoal(Rover, Goal) ->
-    coords_to_pov(
-      Rover#rover.x,
-      Rover#rover.y,
-      -Rover#rover.dir,
-      Goal).
 
 
 % where will the rover be in 1 second?
 future_pos(Rover) ->
-    {Vx, Vy} = vspeed(Rover),
-    {Rover#rover.x + Vx, Rover#rover.y + Vy}.
+    v_add(Rover#rover.pos, velocity(Rover)).
 
-vspeed(Rover) ->
+
+%% vseek(Rover, Steering) ->
+%%     coords_to_pov(
+%%       Rover#rover.x,
+%%       Rover#rover.y,
+%%       Rover#rover.dir,
+%%       Goal).
+
+
+%%% seek behaviour according to http://www.red3d.com/cwr/steer/gdc99/
+%%
+%% desired_velocity = normalize (position - target) * max_speed
+%% steering = desired_velocity - velocity
+seek(Rover, Target, MaxSpeed) ->
+    %% vector pointing from current position to target
+    RoverTarget = v_sub(
+                Rover#rover.pos,
+                Target),
+    %% heading with max speed towards target
+    DesiredVelocity = v_mul( MaxSpeed, normalize( RoverTarget ) ),
+    Steering = v_sub( DesiredVelocity, velocity(Rover) ),
+    Steering.
+
+
+velocity(Rover) ->
     Sin = math:sin(Rover#rover.dir),
     Cos = math:cos(Rover#rover.dir),
     Speed = Rover#rover.speed,
@@ -118,6 +131,45 @@ vspeed(Rover) ->
     Vy = Sin * Speed,
     {Vx, Vy}.
 
+normalize({X, Y}) ->
+    Length = v_len({X, Y}),
+    {X/Length, Y/Length}.
+
+
+%% transforms vector coordinates so that
+%% (1,0) will be 1m away directly in front of the rover and
+%% (0,1) will be exactly 1m to the left of the rover
+to_rover_coordinates(Rover, X) ->
+    coordinate_transform(
+      Rover#rover.pos,
+      -Rover#rover.dir,
+      X).
+
+coordinate_transform(NewOrigin, Dir, X) ->
+    X1 = v_sub(X, NewOrigin),
+    X2 = rotate(Dir, X1),
+    X2.
+
+%% rotates vector by Dir
+rotate(Dir, {X, Y}) ->
+    Sin = math:sin(Dir),
+    Cos = math:cos(Dir),
+    X1 = X*Cos-Y*Sin,
+    Y1 = Y*Cos+X*Sin,
+    {X1, Y1}.
+
+%% simple vector algebra helpers
+v_add({X1, Y1}, {X2, Y2}) ->
+    {X1+X2, Y1+Y2}.
+v_sub({X1, Y1}, {X2, Y2}) ->
+    {X1-X2, Y1-Y2}.
+v_mul(C, {X, Y}) ->
+    {C * X, C * Y}.
+v_len({X, Y}) ->
+    math:sqrt(X*X) + math:sqrt(Y*Y).
+
+v2speed2({Vx, Vy}) ->
+    math:sqrt(Vx*Vx, Vy*Vy).
 
 
 
@@ -241,11 +293,15 @@ test_pov(X, Y, E) ->
     {trunc(X1), trunc(Y1)}.
 
 coords_to_pov(Ox, Oy, Dir, {X, Y}) ->
-    X1 = X-Ox,
-    Y1 = Y-Oy,
-    Sin = math:sin(Dir),
-    Cos = math:cos(Dir),
-    X2 = X1*Cos-Y1*Sin,
-    Y2 = Y1*Cos+X1*Sin,
-    %%?LOG({"coords_to_pov: ",{Ox,Oy},Dir,{X,Y},{X1,Y1},{sin,Sin},{cos,Cos},{X2,Y2}}),
-    {X2, Y2}.
+    coordinate_transform({Ox, Oy}, Dir, {X, Y}).
+
+%% coords_to_pov(Ox, Oy, Dir, {X, Y}) ->
+%%     X1 = X-Ox,
+%%     Y1 = Y-Oy,
+%%     Sin = math:sin(Dir),
+%%     Cos = math:cos(Dir),
+%%     X2 = X1*Cos-Y1*Sin,
+%%     Y2 = Y1*Cos+X1*Sin,
+%%     %%?LOG({"coords_to_pov: ",{Ox,Oy},Dir,{X,Y},{X1,Y1},{sin,Sin},{cos,Cos},{X2,Y2}}),
+%%     {X2, Y2}.
+
