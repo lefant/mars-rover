@@ -18,8 +18,8 @@ loop({Socket, Steer, Pathfind, Mapquad}=Pids) ->
             %% ?LOG({"controller:loop passing on", Command}),
             Socket ! {send, Command},
             loop(Pids);
-        {reset,endofround} ->
-            ?LOG({"controller loop: endofround message received"}),
+        {reset, endofround, TimeStamp} ->
+            ?LOG({"controller loop: endofround message received", TimeStamp}),
             Steer ! {reset},
             Pathfind ! {reset},
             visualizer ! {clear},

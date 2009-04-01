@@ -31,6 +31,9 @@ loop(Controller, Pathfind, Rover, Goal) ->
     receive
         {rover, Rover1} ->
             %% ?LOG({"steer:loop received rover", Rover}),
+            visualizer ! {oval, future_pos(Rover), orange, 2},
+            visualizer ! {oval, {Rover1#rover.x, Rover1#rover.y}, blue, 2},
+
             maybe_command(Controller, Rover1, Goal),
             loop(Controller, Pathfind, Rover1, Goal);
         {goal, Goal1} ->
@@ -81,10 +84,16 @@ maybe_command(Controller, Rover, Goal) ->
         true ->
             Command = list_to_binary(string:join([Accel, Turn, ";"], "")),
 
-            ?LOG({"steer steering: ", {Accel, Turn}, {Rover#rover.speed, TargetSpeed}}),
+            ?LOG({"steer steering: ", Rover#rover.timestamp, {Accel, Turn}, {Rover#rover.speed, TargetSpeed}}),
 
             Controller ! {command, Command}
     end.
+
+
+%%% seek behaviour according to http://www.red3d.com/cwr/steer/gdc99/
+%%
+%% desired_velocity = normalize (position - target) * max_speed
+%% steering = desired_velocity - velocity
 
 
 
@@ -94,6 +103,23 @@ vgoal(Rover, Goal) ->
       Rover#rover.y,
       -Rover#rover.dir,
       Goal).
+
+
+% where will the rover be in 1 second?
+future_pos(Rover) ->
+    {Vx, Vy} = vspeed(Rover),
+    {Rover#rover.x + Vx, Rover#rover.y + Vy}.
+
+vspeed(Rover) ->
+    Sin = math:sin(Rover#rover.dir),
+    Cos = math:cos(Rover#rover.dir),
+    Speed = Rover#rover.speed,
+    Vx = Cos * Speed,
+    Vy = Sin * Speed,
+    {Vx, Vy}.
+
+
+
 
 v2turn({Vx, Vy}) ->
     if

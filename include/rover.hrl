@@ -1,4 +1,5 @@
 -record(rover, {
+          timestamp,
           turn = "-",
           accel = "-",
           x = 10.0,

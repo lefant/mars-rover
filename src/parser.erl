@@ -47,8 +47,8 @@ loop(Controller, Steer, Map, Pathfind) ->
             Controller ! {reset, crater};
         ["K", _] ->
             Controller ! {reset, killed};
-        ["E", _, _] ->
-            Controller ! {reset, endofround};
+        ["E", TimeStamp, _] ->
+            Controller ! {reset, endofround, TimeStamp};
         ["S", _] ->
             ?LOG({"parser:loop received score, ignoring"});
         Any ->
@@ -61,11 +61,12 @@ loop(Controller, Steer, Map, Pathfind) ->
 
 parse_rover(Steer, Pathfind, List) ->
     %% T time-stamp vehicle-ctl vehicle-x vehicle-y vehicle-dir vehicle-speed objects ;
-    [_,VehicleCtl,VehicleX,VehicleY,VehicleDir,VehicleSpeed|ObjectList] = List,
+    [TimeStamp,VehicleCtl,VehicleX,VehicleY,VehicleDir,VehicleSpeed|ObjectList] = List,
     X = str2num(VehicleX),
     Y = str2num(VehicleY),
 
     Rover = #rover{
+      timestamp=TimeStamp,
       turn=string:substr(VehicleCtl, 2),
       accel=string:left(VehicleCtl, 1),
       x=X,

@@ -50,8 +50,6 @@ start() ->
 loop(Steer, Home, QuadTree, Path, NextNode, Pos) ->
     receive
         {pos, Pos1} ->
-            visualizer ! {oval, Pos1, blue, 1},
-
             CurNode = quadtree:find_node(QuadTree, Pos1),
             E = quadtree:eq_node(CurNode, NextNode),
             if

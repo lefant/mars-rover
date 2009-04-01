@@ -1,5 +1,5 @@
 -module(quadtree).
--export([test/0,new/1,insert_circle/2,next_subgoal/1,astar/3,find_node/2,eq_node/2,visualize/2]).
+-export([test/0,new/1,insert_circle/2,next_subgoal/1,astar/3,find_node/2,eq_node/2,visualize/2,within_circle/2]).
 
 -include("../include/debug.hrl").
 -include("../include/quadtree.hrl").
