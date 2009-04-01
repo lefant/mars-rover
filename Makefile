@@ -8,4 +8,5 @@ clean:
 	rm -f erl_crash.dump
 
 run: compile
-	erl -sname console -pa ebin -s main run
+#	erl -sname console -pa ebin -s main run
+	bin/run localhost 17676

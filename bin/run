@@ -1,3 +1,3 @@
 #!/bin/sh
 
-erl -pa ebin -noshell -run main start $@
+erl -pa ebin -boot start_sasl -config conf/elog -noshell -run main start $1 $2
