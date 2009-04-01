@@ -18,6 +18,4 @@ TODO:
 
 WISHLIST:
 ---------
-* quadtree astar should use a list of goalnodes
-** (home is a circle not  a point)
-** this is already prepared in astar/3
+

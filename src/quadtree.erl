@@ -12,12 +12,13 @@ test() ->
 
     visualize:start(),
 
-    {Tree, Start, Goal} = gen_testquad(),
+    {Tree, Start, _Goal} = gen_testquad(),
 
     %% visualize(Tree,white),
 
-    {X,Y} = Goal,
-    Path = astar(Tree, Start, {X, Y, 5}),
+    %% {X,Y} = Goal,
+    %% Path = astar(Tree, Start, {X, Y, 5}),
+    Path = astar(Tree, Start, {0, 0, 5}),
 
     if
         Path =:= failure ->
@@ -30,10 +31,10 @@ test() ->
     end,
 
     visualizer ! {oval, Start, blue},
-    visualizer ! {oval, Goal, orange},
+    %% visualizer ! {oval, Goal, orange},
 
-    HomeNodes = home_nodes(Tree, {0, 0, 5}),
-    visualize(HomeNodes, green),
+    %% HomeNodes = home_nodes(Tree, {0, 0, 5}),
+    %% visualize(HomeNodes, green),
 
     ok.
 
@@ -45,13 +46,13 @@ gen_testquad() ->
     QuadTree = new(200),
 
     Start = random_point(),
-    Goal = random_point(),
+    Goal = {0,0},
 
 
     ListOfCircles =
         lists:filter(
           fun({X, Y, R})
-             -> not within_circle({X, Y, R+5}, Goal)
+             -> not within_circle({X, Y, R+6}, Goal)
           end,
           lists:filter(
             fun({X, Y, R})
@@ -115,23 +116,26 @@ astar(Tree, StartPoint, Home) ->
     GoalPoint = {X, Y},
     StartNode = find_node(Tree, StartPoint),
 
-    %% GoalNode = find_node(Tree, GoalPoint),
     GoalNodes = home_nodes(Tree, Home),
-    [GoalNode|_] = GoalNodes,
+    %% [GoalNode|_] = GoalNodes,
 
-    E = eq_node(StartNode, GoalNode),
-    if
-        E -> [StartNode];
-        true -> astar(Tree, GoalPoint, GoalNode, [], [{StartNode, 0, []}])
+    ReachedGoalList = lists:filter(
+          fun(GoalNode) -> eq_node(StartNode, GoalNode) end,
+          GoalNodes),
+    case ReachedGoalList of
+        [_GoalNode] -> [StartNode];
+        [] -> astar(Tree, GoalPoint, GoalNodes, [], [{StartNode, 0, []}])
     end.
 astar(_,_,_,_,[]) ->
     failure;
-astar(Tree, GoalPoint, GoalNode, Closed, [{Node, CostSoFar, PathSoFar}|Open]) ->
-    IsGoalReached = eq_node(Node, GoalNode),
-    if
-        IsGoalReached ->
+astar(Tree, GoalPoint, GoalNodes, Closed, [{Node, CostSoFar, PathSoFar}|Open]) ->
+    ReachedGoalList = lists:filter(
+                    fun(GoalNode) -> eq_node(Node, GoalNode) end,
+                    GoalNodes),
+    case ReachedGoalList of
+        [_GoalNode] ->
             lists:reverse([Node|PathSoFar]);
-        true ->
+        [] ->
             OpenNeighbours =
                 lists:filter(
                   fun(MaybeOpenNode) ->
@@ -181,7 +185,7 @@ astar(Tree, GoalPoint, GoalNode, Closed, [{Node, CostSoFar, PathSoFar}|Open]) ->
                   end,
                   NewOpen),
 
-            astar(Tree, GoalPoint, GoalNode, [Node|Closed], SortedOpen)
+            astar(Tree, GoalPoint, GoalNodes, [Node|Closed], SortedOpen)
     end.
             
 
