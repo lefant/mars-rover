@@ -12,7 +12,7 @@ test() ->
 
 start() ->
     receive
-        {start, {Controller, Pathfind}} ->
+        {start, {Controller, Pathfind, MaxSpeed}} ->
             ?LOG({"steer started, waiting for initial rover message"}),
             receive
                 {rover, Rover} ->
@@ -20,30 +20,25 @@ start() ->
                     receive
                         {goal, Goal} ->
                             visualizer ! {oval, Goal, green},
-                            maybe_command(Controller, Rover, Goal),
+                            maybe_command(Controller, Rover, Goal, MaxSpeed),
                             ?LOG({"steer entering main loop"}),
-                            loop(Controller, Pathfind, Rover, Goal)
+                            loop(Controller, Pathfind, Rover, Goal, MaxSpeed)
                     end
             end
     end.
 
-loop(Controller, Pathfind, Rover, Goal) ->
+loop(Controller, Pathfind, Rover, Goal, MaxSpeed) ->
     receive
         {rover, Rover1} ->
             %% ?LOG({"steer:loop received rover", Rover}),
-            SeekSteering = v_add(Rover1#rover.pos, seek(Rover, Goal, 20)),
-            visualizer ! {oval, SeekSteering, green, 2},
-            visualizer ! {oval, future_pos(Rover), orange, 2},
-            visualizer ! {oval, Rover1#rover.pos, blue, 2},
-
-            maybe_command(Controller, Rover1, Goal),
-            loop(Controller, Pathfind, Rover1, Goal);
+            maybe_command(Controller, Rover1, Goal, MaxSpeed),
+            loop(Controller, Pathfind, Rover1, Goal, MaxSpeed);
         {goal, Goal1} ->
             ?LOG({"steer:loop new goal:", Goal1}),
             visualizer ! {oval, Goal, yellow},
             visualizer ! {oval, Goal1, green},
-            maybe_command(Controller, Rover, Goal1),
-            loop(Controller, Pathfind, Rover, Goal1);
+            maybe_command(Controller, Rover, Goal1, MaxSpeed),
+            loop(Controller, Pathfind, Rover, Goal1, MaxSpeed);
         {reset} ->
             receive
                 {rover, Rover1} ->
@@ -51,42 +46,47 @@ loop(Controller, Pathfind, Rover, Goal) ->
                     receive
                         {goal, Goal1} ->
                             visualizer ! {oval, Goal1, green},
-                            maybe_command(Controller, Rover1, Goal1),
-                            loop(Controller, Pathfind, Rover1, Goal1)
+                            maybe_command(Controller, Rover1, Goal1, MaxSpeed),
+                            loop(Controller, Pathfind, Rover1, Goal1, MaxSpeed)
                     end
             end;
         Any ->
             ?LOG({"steer loop: unknown msg", Any}),
-            loop(Controller, Pathfind, Rover, Goal)
+            loop(Controller, Pathfind, Rover, Goal, MaxSpeed)
     end.
 
 
 
 
 
-maybe_command(Controller, Rover, Goal) ->
-    VGoal = to_rover_coordinates(Rover, Goal),
+maybe_command(Controller, Rover, Target, MaxSpeed) ->
+    %% VGoal = to_rover_coordinates(Rover, Goal),
 
-    Turn = correct_turn(
-             Rover#rover.turn,
-             turn_goal(
-               v2turn(VGoal))),
+    Steering = seek(Rover, Target, MaxSpeed),
+    %% RoverSteering = to_rover_coordinates(Rover, Steering),
+    RoverSteering = rotate(-Rover#rover.dir, Steering),
 
-    TargetSpeed = v2speed(VGoal, 20),
+    ?LOG({"steer:maybe_command roversteering:", RoverSteering}),
 
-    Accel = correct_accel(
-              Rover#rover.accel,
-              accel_goal(
-                Rover#rover.speed,
-                %% FIXME: should get MaxSpeed=20 via message from main on bootup instead
-                TargetSpeed)),
+    Turn = turn_goal( v2turn(RoverSteering) ),
+    Accel = accel_goal( RoverSteering ),
+
+    TurnCommand = correct_turn(Rover#rover.turn, Turn),
+    AccelCommand = correct_accel(Rover#rover.accel, Accel),
+
+    SeekSteering = v_add(Rover#rover.pos, Steering),
+    visualizer ! {oval, SeekSteering, green, 2},
+    visualizer ! {oval, future_pos(Rover), orange, 2},
+    visualizer ! {oval, Rover#rover.pos, blue, 2},
 
     if
-        (Accel =:= "") and (Turn =:= "") -> void;
+        (AccelCommand =:= "") and (TurnCommand =:= "") -> void;
         true ->
-            Command = list_to_binary(string:join([Accel, Turn, ";"], "")),
+            Command = list_to_binary(string:join([AccelCommand, TurnCommand, ";"], "")),
 
-            ?LOG({"steer steering: ", Rover#rover.timestamp, {Accel, Turn}, {Rover#rover.speed, TargetSpeed}}),
+            ?LOG({"steer steering: ", Rover#rover.timestamp,
+                  {AccelCommand, TurnCommand},
+                  {Rover#rover.speed}}),
 
             Controller ! {command, Command}
     end.
@@ -113,13 +113,17 @@ future_pos(Rover) ->
 %% desired_velocity = normalize (position - target) * max_speed
 %% steering = desired_velocity - velocity
 seek(Rover, Target, MaxSpeed) ->
+    ?LOG({"steer:seek target:", Target}),
     %% vector pointing from current position to target
     RoverTarget = v_sub(
-                Rover#rover.pos,
-                Target),
+                    Target,
+                    Rover#rover.pos),
+    ?LOG({"steer:seek rovertarget:", RoverTarget}),
     %% heading with max speed towards target
     DesiredVelocity = v_mul( MaxSpeed, normalize( RoverTarget ) ),
+    ?LOG({"steer:seek desired vel:", DesiredVelocity}),
     Steering = v_sub( DesiredVelocity, velocity(Rover) ),
+    ?LOG({"steer:seek steering:", Steering}),
     Steering.
 
 
@@ -168,8 +172,7 @@ v_mul(C, {X, Y}) ->
 v_len({X, Y}) ->
     math:sqrt(X*X) + math:sqrt(Y*Y).
 
-v2speed2({Vx, Vy}) ->
-    math:sqrt(Vx*Vx, Vy*Vy).
+
 
 
 
@@ -183,25 +186,8 @@ v2turn({Vx, Vy}) ->
         true ->
             Vy1 = Vy
     end,
+    ?LOG({"steer:v2turn ", {Vx, Vy}, Vy1}),
     Vy1.
-
-v2speed({Vx, Vy}, MaxSpeed) ->
-    if
-        Vx < 0 -> 0;
-%%         Vx > (Vy * 7) -> MaxSpeed;
-        true ->
-            Speed = 10*MaxSpeed / (abs(Vy) / Vx),
-            if
-                Speed > MaxSpeed -> MaxSpeed;
-                true -> Speed
-            end
-    end.
-
-
-
-
-
-%%%%% steering
 
 turn_goal(Diff) ->
     HardTresh = 12,
@@ -213,6 +199,46 @@ turn_goal(Diff) ->
         (StraightTresh < Diff) and (Diff < HardTresh)-> "l";
         HardTresh < Diff -> "L"
     end.
+
+
+accel_goal({Vx, _Vy}) ->
+    D = abs(Vx),
+    if
+        D < 0.1 -> "-";
+        Vx > 0 -> "a";
+        Vx < 0 -> "b"
+    end.
+
+
+%% v2speed({Vx, Vy}, MaxSpeed) ->
+%%     if
+%%         Vx < 0 -> 0;
+%% %%         Vx > (Vy * 7) -> MaxSpeed;
+%%         true ->
+%%             Speed = 10*MaxSpeed / (abs(Vy) / Vx),
+%%             if
+%%                 Speed > MaxSpeed -> MaxSpeed;
+%%                 true -> Speed
+%%             end
+%%     end.
+
+
+%% accel_goal(CurSpeed, TargetSpeed) ->
+%%     D = abs(CurSpeed - TargetSpeed),
+%%     if
+%%         D < 1 -> "-";
+%%         CurSpeed < TargetSpeed -> "a";
+%%         TargetSpeed < CurSpeed -> "b"
+%%     end.
+
+
+
+
+
+
+
+%% mini do-it yourself state machine style correcting current
+%% state of controls to the desired one
 
 correct_turn(Cur,Goal) ->
     case Goal of
@@ -238,15 +264,6 @@ correct_turn(Cur,Goal) ->
             end
     end.
 
-
-accel_goal(CurSpeed, TargetSpeed) ->
-    D = abs(CurSpeed - TargetSpeed),
-    if
-        D < 1 -> "-";
-        CurSpeed < TargetSpeed -> "a";
-        TargetSpeed < CurSpeed -> "b"
-    end.
-
 correct_accel(Cur, Goal) ->
     case Goal of
         Cur -> "";
@@ -258,6 +275,9 @@ correct_accel(Cur, Goal) ->
                 "b" -> "a"
             end
     end.
+
+
+
 
 
 
