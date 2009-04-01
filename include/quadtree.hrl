@@ -6,4 +6,4 @@
           status=empty
 }).
 
--define(MINSIZE, 10).
+-define(MINSIZE, 7).

@@ -60,13 +60,10 @@ loop(Controller, Pathfind, Rover, Goal, MaxSpeed) ->
 
 
 maybe_command(Controller, Rover, Target, MaxSpeed) ->
-    %% VGoal = to_rover_coordinates(Rover, Goal),
-
     Steering = seek(Rover, Target, MaxSpeed),
-    %% RoverSteering = to_rover_coordinates(Rover, Steering),
     RoverSteering = rotate(-Rover#rover.dir, Steering),
 
-    ?LOG({"steer:maybe_command roversteering:", RoverSteering}),
+    %% ?LOG({"steer:maybe_command roversteering:", RoverSteering}),
 
     Turn = turn_goal( v2turn(RoverSteering) ),
     Accel = accel_goal( RoverSteering ),
@@ -74,9 +71,9 @@ maybe_command(Controller, Rover, Target, MaxSpeed) ->
     TurnCommand = correct_turn(Rover#rover.turn, Turn),
     AccelCommand = correct_accel(Rover#rover.accel, Accel),
 
-    SeekSteering = v_add(Rover#rover.pos, Steering),
-    visualizer ! {oval, SeekSteering, green, 2},
-    visualizer ! {oval, future_pos(Rover), orange, 2},
+    %% SeekSteering = v_add(Rover#rover.pos, Steering),
+    %% visualizer ! {oval, SeekSteering, green, 2},
+    %% visualizer ! {oval, future_pos(Rover), orange, 2},
     visualizer ! {oval, Rover#rover.pos, blue, 2},
 
     if
@@ -113,17 +110,14 @@ future_pos(Rover) ->
 %% desired_velocity = normalize (position - target) * max_speed
 %% steering = desired_velocity - velocity
 seek(Rover, Target, MaxSpeed) ->
-    ?LOG({"steer:seek target:", Target}),
     %% vector pointing from current position to target
     RoverTarget = v_sub(
                     Target,
                     Rover#rover.pos),
-    ?LOG({"steer:seek rovertarget:", RoverTarget}),
+
     %% heading with max speed towards target
     DesiredVelocity = v_mul( MaxSpeed, normalize( RoverTarget ) ),
-    ?LOG({"steer:seek desired vel:", DesiredVelocity}),
     Steering = v_sub( DesiredVelocity, velocity(Rover) ),
-    ?LOG({"steer:seek steering:", Steering}),
     Steering.
 
 
@@ -186,7 +180,7 @@ v2turn({Vx, Vy}) ->
         true ->
             Vy1 = Vy
     end,
-    ?LOG({"steer:v2turn ", {Vx, Vy}, Vy1}),
+    %% ?LOG({"steer:v2turn ", {Vx, Vy}, Vy1}),
     Vy1.
 
 turn_goal(Diff) ->
