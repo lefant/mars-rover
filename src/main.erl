@@ -46,13 +46,16 @@ start([Host, PortStr]) ->
     ?LOG({"main: received initial world"}),
 
     Map ! {start, {Mapquad, Steer}},
-    Mapquad ! {start, {Pathfind, World#world.width}},
+
+    MinSize = 2,
+    SpeedFactor = 1.5,
+    Mapquad ! {start, {Pathfind, World#world.width, MinSize}},
 
     %% Home = World#world.home,
-    Home = {0,0,5},
-    Pathfind ! {start,{Steer,Home}},
+    Home = {0, 0, 5},
+    Pathfind ! {start, {Steer, Home}},
 
-    Steer ! {start, {Controller, Pathfind, 2*World#world.maxspeed}},
+    Steer ! {start, {Controller, Pathfind, SpeedFactor*World#world.maxspeed}},
 
     Controller ! {start, {Socket, Steer, Pathfind, Mapquad}},
     

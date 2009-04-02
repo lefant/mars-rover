@@ -3,6 +3,7 @@ TOPIC:
 ------
 * steering should check for necessity of urgent crater/martian/boulder
    avoidance necessity using future_pos
+** DONE, except for martians
 * top level control should count runs and results and adjust our top speed accordingly
 
 

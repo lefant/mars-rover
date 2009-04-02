@@ -1,10 +1,8 @@
 -module(quadtree).
--export([test/0,new/1,insert_circle/2,next_subgoal/1,astar/3,find_node/2,eq_node/2,visualize/2,within_circle/2]).
+-export([test/0,new/1,insert_circle/3,next_subgoal/1,astar/3,find_node/2,eq_node/2,visualize/2,within_circle/2]).
 
 -include("../include/debug.hrl").
 -include("../include/quadtree.hrl").
-
-%% -define(MINSIZE, 5).
 
 
 test() ->
@@ -68,7 +66,7 @@ gen_testquad() ->
 
     Tree = lists:foldl(
         fun(Circle, Node)
-           -> insert_circle(Node, Circle)
+           -> insert_circle(Node, Circle, 10)
         end,
         QuadTree,
         ListOfCircles),
@@ -111,7 +109,7 @@ next_subgoal([CurNode, NextNode, NexterNode|Path]) ->
 
 
 
-astar(Tree, StartPoint, Home) ->
+astar({Tree, MinSize}, StartPoint, Home) ->
     {X, Y, _} = Home,
     GoalPoint = {X, Y},
     StartNode = find_node(Tree, StartPoint),
@@ -124,11 +122,12 @@ astar(Tree, StartPoint, Home) ->
           GoalNodes),
     case ReachedGoalList of
         [_GoalNode] -> [StartNode];
-        [] -> astar(Tree, GoalPoint, GoalNodes, [], [{StartNode, 0, []}])
+        [] -> astar({Tree, MinSize}, GoalPoint, GoalNodes, [], [{StartNode, 0, []}])
     end.
-astar(_,_,_,_,[]) ->
+astar({_Tree, _MinSize},_,_,_,[]) ->
+    %% we could force quadtree rebuild and retry with MinSize1 = MinSize-1
     failure;
-astar(Tree, GoalPoint, GoalNodes, Closed, [{Node, CostSoFar, PathSoFar}|Open]) ->
+astar({Tree, MinSize}, GoalPoint, GoalNodes, Closed, [{Node, CostSoFar, PathSoFar}|Open]) ->
     ReachedGoalList = lists:filter(
                     fun(GoalNode) -> eq_node(Node, GoalNode) end,
                     GoalNodes),
@@ -145,7 +144,7 @@ astar(Tree, GoalPoint, GoalNodes, Closed, [{Node, CostSoFar, PathSoFar}|Open]) -
                                 end,
                                 Closed)
                   end,
-                  neighbours(Tree, Node)),
+                  neighbours(Tree, Node, MinSize)),
 
             NewOpen =
                 lists:foldl(
@@ -185,7 +184,7 @@ astar(Tree, GoalPoint, GoalNodes, Closed, [{Node, CostSoFar, PathSoFar}|Open]) -
                   end,
                   NewOpen),
 
-            astar(Tree, GoalPoint, GoalNodes, [Node|Closed], SortedOpen)
+            astar({Tree, MinSize}, GoalPoint, GoalNodes, [Node|Closed], SortedOpen)
     end.
             
 
@@ -196,7 +195,7 @@ astar(Tree, GoalPoint, GoalNodes, Closed, [{Node, CostSoFar, PathSoFar}|Open]) -
 
 
 
-insert_circle(Node, Circle) ->
+insert_circle(Node, Circle, MinSize) ->
     I = intersects_circle(Node, Circle),
     if
         I ->
@@ -205,20 +204,20 @@ insert_circle(Node, Circle) ->
                     Node#quadtree{
                       children=lists:map(
                                  fun(ChildNode) ->
-                                         insert_circle(ChildNode, Circle)
+                                         insert_circle(ChildNode, Circle, MinSize)
                                  end,
                                  Node#quadtree.children)};
                 true ->
                     N = node_within_circle(Node, Circle),
                     O = Node#quadtree.status=:=obstacle,
                     if
-                        (((Node#quadtree.size > ?MINSIZE)
+                        (((Node#quadtree.size > MinSize)
                         and not N) and not O) ->
                             Node#quadtree{
                               children=lists:map(
                                          fun(ChildNode) ->
                                                  %% visualize(ChildNode, white),
-                                                 insert_circle(ChildNode, Circle)
+                                                 insert_circle(ChildNode, Circle, MinSize)
                                          end,
                                          new_children(Node)),
                               status=parent};
@@ -268,7 +267,7 @@ home_nodes(Node, Circle) ->
 
 
 
-neighbours(Node, Leaf) ->
+neighbours(Node, Leaf, MinSize) ->
     lists:filter(
       %% fun(ChildNode) -> not eq_node(Leaf,ChildNode) end,
       fun(ChildNode) ->
@@ -277,29 +276,29 @@ neighbours(Node, Leaf) ->
                     corners(
                       {ChildNode#quadtree.x,
                        ChildNode#quadtree.y,
-                       ChildNode#quadtree.size - ?MINSIZE/2})),
+                       ChildNode#quadtree.size - MinSize/2})),
               %% ?LOG({"neighbours: within",Res}),
               Res
       end,
       neighbours_rec(Node,
                      Leaf#quadtree{
-                       x = Leaf#quadtree.x + ?MINSIZE/2,
-                       size = Leaf#quadtree.size - ?MINSIZE/4
+                       x = Leaf#quadtree.x + MinSize/2,
+                       size = Leaf#quadtree.size - MinSize/4
                       }) ++
       neighbours_rec(Node,
                      Leaf#quadtree{
-                       x = Leaf#quadtree.x - ?MINSIZE/2,
-                       size = Leaf#quadtree.size - ?MINSIZE/4
+                       x = Leaf#quadtree.x - MinSize/2,
+                       size = Leaf#quadtree.size - MinSize/4
                       }) ++
       neighbours_rec(Node,
                      Leaf#quadtree{
-                       y = Leaf#quadtree.y + ?MINSIZE/2,
-                       size = Leaf#quadtree.size - ?MINSIZE/4
+                       y = Leaf#quadtree.y + MinSize/2,
+                       size = Leaf#quadtree.size - MinSize/4
                       }) ++
       neighbours_rec(Node,
                      Leaf#quadtree{
-                       y = Leaf#quadtree.y - ?MINSIZE/2,
-                       size = Leaf#quadtree.size - ?MINSIZE/4
+                       y = Leaf#quadtree.y - MinSize/2,
+                       size = Leaf#quadtree.size - MinSize/4
                       })).
 
 

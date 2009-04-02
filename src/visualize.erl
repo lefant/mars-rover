@@ -54,6 +54,8 @@ start() ->
 
 loop() ->
     receive
+        %% _Ignore ->
+        %%     loop();
         {clear} ->
             gs:create(rectangle, can1,
                       [{coords,

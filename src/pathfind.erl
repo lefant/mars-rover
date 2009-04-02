@@ -47,10 +47,10 @@ start() ->
             end
     end.
 
-loop(Steer, Home, QuadTree, Path, NextNode, CurNode, Pos) ->
+loop(Steer, Home, {Tree, _MinSize}=QuadTree, Path, NextNode, CurNode, Pos) ->
     receive
         {pos, Pos1} ->
-            CurNode1 = quadtree:find_node(QuadTree, Pos1),
+            CurNode1 = quadtree:find_node(Tree, Pos1),
             InNextNode = quadtree:eq_node(CurNode1, NextNode),
             if
                 InNextNode ->
@@ -100,11 +100,19 @@ newpath({Steer, Home, QuadTree, Pos}) ->
                      Pos,
                      Home),
             nextgoal(Steer, Home, QuadTree, Path, Pos)
+            %% if
+            %%     Path =:= failure ->
+            %%         Steer ! {goal, {0, 0}},
+            %%         self() ! {reset},
+            %%         loop(Steer, Home, QuadTree, Path, no_next_node, QuadTree, Pos);
+            %%     true ->
+            %%         nextgoal(Steer, Home, QuadTree, Path, Pos)
+            %% end
     end.
 
 
-nextgoal(Steer, Home, QuadTree, Path, Pos) ->
+nextgoal(Steer, Home, {Tree, _MinSize}=QuadTree, Path, Pos) ->
     {Goal, NextNode, Path1} = quadtree:next_subgoal(Path),
     Steer ! {goal, Goal},
-    CurNode = quadtree:find_node(QuadTree, Pos),
+    CurNode = quadtree:find_node(Tree, Pos),
     loop(Steer, Home, QuadTree, Path1, NextNode, CurNode, Pos).
