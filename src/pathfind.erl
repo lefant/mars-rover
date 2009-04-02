@@ -47,16 +47,24 @@ start() ->
             end
     end.
 
-loop(Steer, Home, QuadTree, Path, NextNode, Pos) ->
+loop(Steer, Home, QuadTree, Path, NextNode, CurNode, Pos) ->
     receive
         {pos, Pos1} ->
-            CurNode = quadtree:find_node(QuadTree, Pos1),
-            E = quadtree:eq_node(CurNode, NextNode),
+            CurNode1 = quadtree:find_node(QuadTree, Pos1),
+            InNextNode = quadtree:eq_node(CurNode1, NextNode),
             if
-                E ->
+                InNextNode ->
+                    ?LOG({"pathfind loop: reached current target node, head for next one"}),
                     nextgoal(Steer, Home, QuadTree, Path, Pos1);
                 true ->
-                    loop(Steer, Home, QuadTree, Path, NextNode, Pos1)
+                    InCurNode = quadtree:eq_node(CurNode1, CurNode),
+                    if
+                        InCurNode ->
+                            loop(Steer, Home, QuadTree, Path, NextNode, CurNode, Pos1);
+                        true ->
+                            ?LOG({"pathfind loop: ran out of current node into one different from the target, recompute path"}),
+                            newpath(Steer, Home, QuadTree, Pos1)
+                    end
             end;
         {quadtree, QuadTree1} ->
             ?LOG({"pathfind loop: quadtree received, update it and run newpath"}),
@@ -70,7 +78,7 @@ loop(Steer, Home, QuadTree, Path, NextNode, Pos) ->
             end;
         Any ->
             ?LOG({"pathfind loop: unknown msg", Any}),
-            loop(Steer, Home, QuadTree, Path, NextNode, Pos)
+            loop(Steer, Home, QuadTree, Path, NextNode, CurNode, Pos)
     end.
 
 
@@ -84,5 +92,6 @@ newpath(Steer, Home, QuadTree, Pos) ->
 nextgoal(Steer, Home, QuadTree, Path, Pos) ->
     {Goal, NextNode, Path1} = quadtree:next_subgoal(Path),
     Steer ! {goal, Goal},
-    loop(Steer, Home, QuadTree, Path1, NextNode, Pos).
+    CurNode = quadtree:find_node(QuadTree, Pos),
+    loop(Steer, Home, QuadTree, Path1, NextNode, CurNode, Pos).
 

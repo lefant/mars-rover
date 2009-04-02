@@ -30,11 +30,9 @@ start() ->
 loop(Controller, Pathfind, Rover, Goal, MaxSpeed) ->
     receive
         {rover, Rover1} ->
-            %% ?LOG({"steer:loop received rover", Rover}),
             maybe_command(Controller, Rover1, Goal, MaxSpeed),
             loop(Controller, Pathfind, Rover1, Goal, MaxSpeed);
         {goal, Goal1} ->
-            ?LOG({"steer:loop new goal:", Goal1}),
             visualizer ! {oval, Goal, yellow},
             visualizer ! {oval, Goal1, green},
             maybe_command(Controller, Rover, Goal1, MaxSpeed),
