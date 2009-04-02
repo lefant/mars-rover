@@ -1,21 +1,22 @@
 
 TOPIC:
 ------
-* need better subgoal acquiring / achievement detection strategy
+* steering should check for necessity of urgent crater/martian/boulder
+   avoidance necessity using future_pos
+* top level control should count runs and results and adjust our top speed accordingly
 
 
 TODO:
 -----
-* control should keep track of steer state and send commands only when
-   change necessary
-** maybe also rate throttle sending of steering commands
-** but also resend if state does not change as desired
-
-
-** sometimes steer hangs waiting for initial goal
-
 
 
 WISHLIST:
 ---------
+* nice separate control gen_fsm?
+** maybe also rate throttle sending of steering commands
+** but also resend if state does not change as desired
+
+* sometimes steer hangs waiting for initial goal
+** probably when we find no path, worked around with small minlength
+   and heading for {0, 0} after timeout
 

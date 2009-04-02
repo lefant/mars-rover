@@ -100,13 +100,13 @@ next_subgoal([_]) ->
     ?LOG({"next_subgoal, final subgoal: ",{0, 0}}),
     {{0, 0}, no_next_node, no_path};
 next_subgoal([LastNode, CurNode]) ->
-    next_subgoal([LastNode, CurNode, #quadtree{x=0, y=0, size=10}]);
+    next_subgoal([LastNode, CurNode, #quadtree{x=0, y=0, size=4}]);
 next_subgoal([CurNode, NextNode, NexterNode|Path]) ->
     NextGoal = midpoint(
         nodes_touching(CurNode, NextNode),
         nodes_touching(NextNode, NexterNode)),
 
-    visualize(NextNode, yellow),
+    %% visualize(NextNode, yellow),
     {NextGoal, NextNode, [NextNode|[NexterNode|Path]]}.
 
 
@@ -217,7 +217,7 @@ insert_circle(Node, Circle) ->
                             Node#quadtree{
                               children=lists:map(
                                          fun(ChildNode) ->
-                                                 visualize(ChildNode, white),
+                                                 %% visualize(ChildNode, white),
                                                  insert_circle(ChildNode, Circle)
                                          end,
                                          new_children(Node)),
@@ -380,10 +380,12 @@ visualize(Node, Color) ->
         true ->
             [X1,X2,_,_] = node_corners(Node),
             case Node#quadtree.status of
-                obstacle -> Color1 = red;
-                empty -> Color1 = Color
-            end,
-            visualizer ! {node, {X1, X2}, Color1}
+                obstacle ->
+                    visualizer ! {node, {X1, X2}, red};
+                empty ->
+                    %% visualizer ! {node, {X1, X2}, Color},
+                    void
+            end
     end.
 
 

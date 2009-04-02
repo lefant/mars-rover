@@ -46,6 +46,11 @@ loop(Controller, Pathfind, Rover, Goal, MaxSpeed) ->
                             visualizer ! {oval, Goal1, green},
                             maybe_command(Controller, Rover1, Goal1, MaxSpeed),
                             loop(Controller, Pathfind, Rover1, Goal1, MaxSpeed)
+                    after 500 ->
+                            Goal1 = {0, 0},
+                            visualizer ! {oval, Goal1, green},
+                            maybe_command(Controller, Rover1, Goal1, MaxSpeed),
+                            loop(Controller, Pathfind, Rover1, Goal1, MaxSpeed)
                     end
             end;
         Any ->

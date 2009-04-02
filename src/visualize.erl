@@ -57,8 +57,8 @@ loop() ->
         {clear} ->
             gs:create(rectangle, can1,
                       [{coords,
-                        [transform({0, 0}),
-                         transform({0, 0})]},
+                        [{0, 0},
+                         {1000, 1000}]},
                        {fill, grey}]),
             loop();
         {oval, Point, Color} ->

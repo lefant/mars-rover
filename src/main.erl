@@ -52,7 +52,7 @@ start([Host, PortStr]) ->
     Home = {0,0,5},
     Pathfind ! {start,{Steer,Home}},
 
-    Steer ! {start, {Controller, Pathfind, World#world.maxspeed}},
+    Steer ! {start, {Controller, Pathfind, 1.5*World#world.maxspeed}},
 
     Controller ! {start, {Socket, Steer, Pathfind, Mapquad}},
     
