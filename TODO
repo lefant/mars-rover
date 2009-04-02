@@ -16,6 +16,9 @@ WISHLIST:
 ** maybe also rate throttle sending of steering commands
 ** but also resend if state does not change as desired
 
+
+KNOWN BUGS
+----------
 * sometimes steer hangs waiting for initial goal
 ** probably when we find no path, worked around with small minlength
    and heading for {0, 0} after timeout

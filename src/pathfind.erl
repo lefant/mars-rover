@@ -108,4 +108,3 @@ nextgoal(Steer, Home, QuadTree, Path, Pos) ->
     Steer ! {goal, Goal},
     CurNode = quadtree:find_node(QuadTree, Pos),
     loop(Steer, Home, QuadTree, Path1, NextNode, CurNode, Pos).
-
