@@ -42,7 +42,7 @@ start() ->
                     ?LOG({"pathfind received initial quad, waiting for initial pos"}),
                     receive
                         {pos, Pos} ->
-                            newpath(Steer, Home, QuadTree, Pos)
+                            newpath({Steer, Home, QuadTree, Pos})
                     end
             end
     end.
@@ -63,31 +63,45 @@ loop(Steer, Home, QuadTree, Path, NextNode, CurNode, Pos) ->
                             loop(Steer, Home, QuadTree, Path, NextNode, CurNode, Pos1);
                         true ->
                             ?LOG({"pathfind loop: ran out of current node into one different from the target, recompute path"}),
-                            newpath(Steer, Home, QuadTree, Pos1)
+                            self() ! {newpath, {Steer, Home, QuadTree, Pos1}},
+                            loop(Steer, Home, QuadTree, Path, NextNode, CurNode, Pos1)
                     end
             end;
         {quadtree, QuadTree1} ->
             ?LOG({"pathfind loop: quadtree received, update it and run newpath"}),
-            newpath(Steer, Home, QuadTree1, Pos);
+            self() ! {newpath, {Steer, Home, QuadTree1, Pos}},
+            loop(Steer, Home, QuadTree1, Path, NextNode, CurNode, Pos);
         {reset} ->
             ?LOG({"pathfind loop: reset received, waiting for initial pos"}),
             receive
                 {pos,Pos1} ->
                     ?LOG({"pathfind loop: initial pos received"}),
-                    newpath(Steer, Home, QuadTree, Pos1)
+                    self() ! {newpath, {Steer, Home, QuadTree, Pos1}},
+                    loop(Steer, Home, QuadTree, Path, NextNode, CurNode, Pos1)
             end;
+        {newpath, Parameters} ->
+            ?LOG({"pathfind loop: newpath received"}),
+            newpath(Parameters);
         Any ->
             ?LOG({"pathfind loop: unknown msg", Any}),
             loop(Steer, Home, QuadTree, Path, NextNode, CurNode, Pos)
     end.
 
 
-newpath(Steer, Home, QuadTree, Pos) ->
-    Path = quadtree:astar(
-              QuadTree,
-              Pos,
-              Home),
-    nextgoal(Steer, Home, QuadTree, Path, Pos).
+newpath({Steer, Home, QuadTree, Pos}) ->
+    receive
+        {newpath, Parameters} ->
+            %% ?LOG({"pathfind newpath putting up for flush", Parameters}),
+            newpath(Parameters)
+    after 0 ->
+            ?LOG({"pathfind newpath really calling astar"}),
+            Path = quadtree:astar(
+                     QuadTree,
+                     Pos,
+                     Home),
+            nextgoal(Steer, Home, QuadTree, Path, Pos)
+    end.
+
 
 nextgoal(Steer, Home, QuadTree, Path, Pos) ->
     {Goal, NextNode, Path1} = quadtree:next_subgoal(Path),

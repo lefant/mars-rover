@@ -114,8 +114,10 @@ parse_map(Map, [Type, X1, Y1, R1|Rest]) ->
     end,
     parse_map(Map, Rest);
 
-parse_map(_, [Any]) ->
-    throw({"parser:parse_map garbage at end of message", Any}).
+parse_map(_, Any) ->
+    ?LOG({"parser:parse_map garbage at end of message", Any}),
+    ok.
+    %% throw({"parser:parse_map garbage at end of message", Any}).
 
 
 
