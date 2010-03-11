@@ -1,0 +1,3 @@
+run like this:
+
+./icfp2008/linux2.6.24/server -v icfp2008/sample-maps/spiral.wrld & make run
