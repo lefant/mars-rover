@@ -1,3 +1,11 @@
+
+preparations:
+mkdir ebin
+
 run like this:
 
 ./icfp2008/linux2.6.24/server -v icfp2008/sample-maps/spiral.wrld & make run
+
+or if you are on 64bit and ready to skip the gui:
+
+./icfp2008/no-gui-static/server icfp2008/sample-maps/spiral.wrld & make run
