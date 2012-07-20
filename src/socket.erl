@@ -19,24 +19,22 @@ loop(Socket, Parser) ->
     receive
         {tcp, Socket, Bin} ->
             %% ?LOG({"socket: received bin", Bin}),
-            case regexp:split(
-                   binary_to_list(Bin),
-                   ";") of
-                {error, Error} ->
-                    ?LOG({"socket: error splitting Bin", Bin, Error}),
+            case string:tokens(binary_to_list(Bin), ";") of
+                [] ->
+                    ?LOG({"socket: error splitting Bin", Bin}),
                     loop(Socket, Parser);
-                {ok, MsgList} ->
+                MsgList ->
                     MsgList2 = lists:filter(
                       fun(Msg) -> not (Msg =:= []) end,
                       MsgList),
                     lists:map(
                       fun(Msg) ->
-                              case regexp:split(Msg, " ") of
-                                  {error, Error} ->
+                              case string:tokens(Msg, " ") of
+                                  [] ->
                                       ?LOG({"socket: error splitting Msg",
-                                            Msg, Error}),
+                                            Msg}),
                                       loop(Socket, Parser);
-                                  {ok, List} ->
+                                  List ->
                                       %% ?LOG({"socket: sending", List}),
                                       Parser ! List
                               end
